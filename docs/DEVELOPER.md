@@ -1,0 +1,64 @@
+# Maintaining this repo
+
+How to change the sandbox once you already understand it. For the mental model and glossary, start with [GUIDE.md](GUIDE.md). For why the pieces exist, see [PLAN.md](PLAN.md). For snapshot/log PII and the PCI guard, see [PLAN-COMPLIANCE.md](PLAN-COMPLIANCE.md). For walking discovery, post, and holds by hand, see [SCENARIOS.md](SCENARIOS.md).
+
+## Commands
+
+```bash
+make test
+make lint
+make dev
+```
+
+Python 3.11+, Node 20+. Do not commit `.venv/` or `banks-ui/node_modules/`.
+
+## Where things live
+
+| Change | File |
+| --- | --- |
+| Jordan’s Redwood balance | `data/native/redwood.json` |
+| String vs cents conversion | `schema/adapters.py` |
+| New snapshot field | `canonical.py`, `canonical.schema.json`, every adapter, `CANONICAL_REQUIRED` |
+| Dollar hold limit | `IAI_TRANSFER_ESCALATION_USD` |
+| Portal look | `banks-ui/src/pages/<bank>.ts` and `styles/<bank>.css` |
+
+## Adding a fourth bank
+
+1. New seed: `data/native/<id>.json` with a shape the existing adapters cannot parse.
+2. New adapter class with `to_canonical`, `to_native_transfer`, and `apply_transfer`. Register it on `ADAPTERS`.
+3. Row in `institutions()` (`schema/registry.py`).
+4. `NATIVE_HINTS` plus `data/contracts/<id>.html` matching the TypeScript `data-iai-*` marks.
+5. Page + CSS + route in `banks-ui`. Hub card. The page must still render **native** keys.
+6. Tests: same person, checking available `2190.40` or document why not, and one hold path if you add a risky account.
+7. A short table row in `docs/DESIGN.md`.
+
+Do not teach a portal to render `CanonicalSnapshot`. If the UI looks “normalized,” schema drift becomes invisible.
+
+## Holds
+
+Add a new `EscalationReason` rather than stuffing text into `summary`. Test the code, not the sentence. Built-in hold walks (Calloway HOLD, Northstar $9000, policy) are in [SCENARIOS.md](SCENARIOS.md).
+
+## Replay writes
+
+Each adapter owns `apply_transfer`. Do not add bank-specific posting logic back into `ReplayEngine`.
+
+## Discovery
+
+Tests inject HTML through `html_loader`. Keep the default loader as HTTP GET. When you add a bindable field, update both the page and `data/contracts/`.
+
+## Config
+
+| Variable | Default |
+| --- | --- |
+| `IAI_BANK_UI_BASE_URL` | `http://127.0.0.1:5173` |
+| `IAI_TRANSFER_ESCALATION_USD` | `5000` |
+| `IAI_DISCOVERY_MIN_CONFIDENCE` | `0.72` |
+
+## If something looks wrong
+
+| Symptom | Check |
+| --- | --- |
+| Portal error, hub ok | API not on 8000 |
+| Discovery has locators but empty actions after a new bank | missing `data/contracts/<id>.html` |
+| Balance did not move | in-memory extract; reload the page. Reset if you restarted the API |
+| `Unknown institution` | id missing from `ADAPTERS` and `institutions()` |

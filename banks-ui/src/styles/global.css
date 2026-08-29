@@ -1,0 +1,93 @@
+:root {
+  --bg: #f6f4ef;
+  --ink: #1b1b1b;
+  --muted: #5c5c5c;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  color: var(--ink);
+  background: var(--bg);
+  font-family: "Source Sans 3", system-ui, sans-serif;
+}
+a { color: inherit; }
+#app { min-height: 100vh; }
+
+.site-nav {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.85rem 1.4rem;
+  font-size: 0.92rem;
+}
+.site-nav a { text-decoration: none; opacity: 0.72; }
+.site-nav a.is-active, .site-nav a:hover { opacity: 1; }
+
+.hub {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 1.5rem 1.4rem 4rem;
+}
+.hub header h1 {
+  font-family: Fraunces, Georgia, serif;
+  font-size: 2.4rem;
+  margin: 0 0 0.4rem;
+}
+.hub header p { max-width: 46rem; color: var(--muted); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+.card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 1.15rem 1.2rem 1.25rem;
+  text-decoration: none;
+  box-shadow: 0 10px 30px rgba(20, 16, 8, 0.06);
+  border: 1px solid rgba(0,0,0,0.06);
+  min-height: 180px;
+}
+.card h2 { margin: 0 0 0.35rem; font-size: 1.2rem; }
+.card .eyebrow { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.65; }
+.card p { color: var(--muted); font-size: 0.95rem; }
+.notice {
+  margin-top: 2rem;
+  padding: 1rem 1.1rem;
+  background: #efe7d6;
+  border-radius: 12px;
+  color: #3d3424;
+}
+
+.banner { padding: 0.35rem 1.4rem; font-size: 0.78rem; letter-spacing: 0.04em; }
+.error, .ok {
+  margin: 0.8rem 0;
+  padding: 0.7rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.92rem;
+}
+.error { background: #fde8e8; color: #8a1f1f; }
+.ok { background: #e5f6ea; color: #1d5c32; }
+
+.transfer {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 0.4rem;
+}
+.transfer label { display: grid; gap: 0.25rem; font-size: 0.85rem; }
+.transfer input, .transfer select, .transfer textarea, .console input, .console select, .console textarea {
+  font: inherit;
+  padding: 0.5rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.18);
+  background: #fff;
+}
+.transfer button, .console button, .ghost {
+  font: inherit;
+  cursor: pointer;
+  border: 0;
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+}
+
+table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+th, td { text-align: left; padding: 0.55rem 0.4rem; border-bottom: 1px solid rgba(0,0,0,0.08); }
+.amount.debit { color: #9b1c1c; }
+.amount.credit { color: #1d6b3a; }

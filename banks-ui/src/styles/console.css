@@ -1,0 +1,38 @@
+.theme-console {
+  background: #101418;
+  color: #e8eef2;
+  font-family: "IBM Plex Sans", sans-serif;
+}
+.theme-console .site-nav { background: #0b0e11; color: #d5dee6; }
+.theme-console a { color: #9ad8ff; }
+.theme-console .shell { max-width: 1180px; margin: 0 auto; padding: 1.2rem 1.3rem 3rem; }
+.theme-console h1 { font-size: 1.6rem; margin: 0 0 0.3rem; }
+.theme-console .lede { color: #93a3b0; max-width: 46rem; }
+.theme-console .row { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 1rem; margin-top: 1.2rem; }
+@media (max-width: 860px) { .theme-console .row { grid-template-columns: 1fr; } }
+.theme-console .panel {
+  background: #171d23;
+  border: 1px solid #2a3540;
+  border-radius: 12px;
+  padding: 1rem;
+}
+.theme-console button { background: #3ee0b0; color: #06281d; font-weight: 650; }
+.theme-console button.secondary { background: #24303a; color: #d5dee6; }
+.theme-console .chips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin: 1rem 0; }
+.theme-console .chip {
+  background: #12181e;
+  border: 1px solid #2a3540;
+  border-radius: 10px;
+  padding: 0.7rem;
+}
+.theme-console .chip .n { font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+.theme-console .steps { list-style: none; padding: 0; margin: 0.6rem 0 0; }
+.theme-console .steps li { padding: 0.4rem 0; border-bottom: 1px solid #2a3540; font-size: 0.9rem; }
+.theme-console .fail { color: #ff8d8d; }
+.theme-console .pass { color: #3ee0b0; }
+.theme-console table { color: inherit; }
+.theme-console th, .theme-console td { border-bottom-color: #2a3540; }
+.theme-console .sev-critical { color: #ff8d8d; }
+.theme-console .sev-high { color: #ffb020; }
+.theme-console .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.theme-console label { display: grid; gap: 0.25rem; font-size: 0.85rem; margin-bottom: 0.55rem; color: #c5d0d8; }

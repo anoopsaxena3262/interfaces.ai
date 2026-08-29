@@ -1,0 +1,49 @@
+{
+  "routing": "121140399",
+  "extractedAt": "2026-08-28T15:30:00Z",
+  "household": {
+    "partyKey": "HH-20441",
+    "primary": {
+      "given": "Jordan",
+      "surname": "Hale",
+      "mail": "jordan.hale@example.net",
+      "tel": "+1-510-555-0199"
+    }
+  },
+  "products": {
+    "deposits": [
+      {
+        "productInstance": "CHK-77",
+        "nickname": "Everyday checking",
+        "kind": "demand",
+        "mask": "••1104",
+        "lifecycle": "active",
+        "position": { "avail": "2190.40", "ledger": "2190.40", "iso": "USD" }
+      },
+      {
+        "productInstance": "SAV-12",
+        "nickname": "Reserve",
+        "kind": "parked",
+        "mask": "••8812",
+        "lifecycle": "active",
+        "position": { "avail": "8840.00", "ledger": "8840.00", "iso": "USD" }
+      }
+    ]
+  },
+  "posted": [
+    {
+      "ref": "rw-1044",
+      "on": "2026-08-27",
+      "note": "RITUAL COFFEE",
+      "signed": "-4.85",
+      "productInstance": "CHK-77"
+    },
+    {
+      "ref": "rw-1039",
+      "on": "2026-08-25",
+      "note": "PAYROLL GLASSHOUSE",
+      "signed": "2100.00",
+      "productInstance": "CHK-77"
+    }
+  ]
+}

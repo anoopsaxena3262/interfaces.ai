@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://interfaces.ai/schemas/canonical-snapshot.json",
+  "title": "CanonicalSnapshot",
+  "description": "Bank-agnostic customer, account, and activity contract used by discovery, replay, and escalation.",
+  "type": "object",
+  "required": ["institution_id", "institution_name", "as_of", "customer", "accounts", "transactions"],
+  "properties": {
+    "institution_id": { "type": "string" },
+    "institution_name": { "type": "string" },
+    "as_of": { "type": "string", "format": "date-time" },
+    "customer": {
+      "type": "object",
+      "required": ["id", "display_name", "native_id_field"],
+      "properties": {
+        "id": { "type": "string" },
+        "display_name": { "type": "string" },
+        "email": { "type": ["string", "null"] },
+        "phone": { "type": ["string", "null"] },
+        "native_id_field": { "type": "string" }
+      }
+    },
+    "accounts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "masked_number", "name", "type", "available", "current"],
+        "properties": {
+          "id": { "type": "string" },
+          "masked_number": { "type": "string" },
+          "name": { "type": "string" },
+          "type": { "enum": ["checking", "savings", "credit", "loan", "unknown"] },
+          "status": { "type": "string" },
+          "available": { "$ref": "#/$defs/money" },
+          "current": { "$ref": "#/$defs/money" }
+        }
+      }
+    },
+    "transactions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "account_id", "posted_on", "description", "amount", "direction"],
+        "properties": {
+          "id": { "type": "string" },
+          "account_id": { "type": "string" },
+          "posted_on": { "type": "string", "format": "date" },
+          "description": { "type": "string" },
+          "amount": { "$ref": "#/$defs/money" },
+          "direction": { "enum": ["debit", "credit"] }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "money": {
+      "type": "object",
+      "required": ["amount", "currency"],
+      "properties": {
+        "amount": { "type": "string" },
+        "currency": { "type": "string", "minLength": 3, "maxLength": 3 }
+      }
+    }
+  }
+}

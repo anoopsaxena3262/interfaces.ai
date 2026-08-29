@@ -1,0 +1,34 @@
+{
+  "header": {
+    "cu": "NSFCU",
+    "asOfEpoch": 1756396800
+  },
+  "memberRec": {
+    "mbrNo": "441208",
+    "nmLine": "Hale, Jordan A",
+    "eml": "jordan.hale@example.net",
+    "ph10": "5105550199"
+  },
+  "suffixList": [
+    {
+      "sfx": "00",
+      "ttl": "Share draft",
+      "cls": "SD",
+      "avail": 219040,
+      "bal": 219040,
+      "stat": "A"
+    },
+    {
+      "sfx": "01",
+      "ttl": "Regular shares",
+      "cls": "SV",
+      "avail": 884000,
+      "bal": 884000,
+      "stat": "A"
+    }
+  ],
+  "actv": [
+    { "id": "8801", "day": "20260827", "txt": "RITUAL COFFEE", "cents": -485, "sfx": "00" },
+    { "id": "8794", "day": "20260825", "txt": "PAYROLL GLASSHOUSE", "cents": 210000, "sfx": "00" }
+  ]
+}

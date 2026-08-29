@@ -1,0 +1,19 @@
+{
+  "sys": "OSI-CORE-SIM",
+  "extractedAt": "2026-08-28T12:00:00+00:00",
+  "cust": {
+    "cif": "90021",
+    "name1": "Jordan Hale",
+    "email": "jordan.hale@example.net",
+    "voice": "510-555-0199"
+  },
+  "acct_rel": [
+    { "n": "900210001", "d": "CHECKING", "t": "CK", "m": "1104", "a": 219040, "l": 219040, "s": "OK" },
+    { "n": "900210002", "d": "SAVINGS", "t": "SV", "m": "8812", "a": 884000, "l": 884000, "s": "OK" },
+    { "n": "900210099", "d": "PERSONAL LOC", "t": "LN", "m": "0099", "a": 0, "l": 500000, "s": "HOLD" }
+  ],
+  "hist": [
+    { "k": "H441", "ymd": "2026-08-27", "t": "RITUAL COFFEE", "s": "-", "p": 485, "n": "900210001" },
+    { "k": "H438", "ymd": "2026-08-25", "t": "PAYROLL GLASSHOUSE", "s": "+", "p": 210000, "n": "900210001" }
+  ]
+}

@@ -1,0 +1,21 @@
+.theme-redwood { background: #f3ece3; color: #2b1c12; }
+.theme-redwood .site-nav { background: #4a2c1a; color: #f3ece3; }
+.theme-redwood .banner { background: #c45c26; color: #fff; font-weight: 600; }
+.theme-redwood .shell { max-width: 1080px; margin: 0 auto; padding: 1.4rem; }
+.theme-redwood .wordmark { font-family: Fraunces, serif; font-size: 1.7rem; margin: 0; }
+.theme-redwood .accounts { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem; }
+.theme-redwood .acct {
+  background: #4a2c1a;
+  color: #f8efe6;
+  border-radius: 18px;
+  padding: 1.1rem 1.2rem;
+  min-height: 140px;
+}
+.theme-redwood .acct .bal { font-family: Fraunces, serif; font-size: 1.8rem; }
+.theme-redwood .panel {
+  margin-top: 1.4rem;
+  background: #fff;
+  border-radius: 16px;
+  padding: 1rem 1.1rem 1.2rem;
+}
+.theme-redwood .transfer button { background: #c45c26; color: #fff; font-weight: 700; }

@@ -1,0 +1,26 @@
+.theme-calloway {
+  background: #f4eadc;
+  color: #3a1f1f;
+  font-family: "Libre Baskerville", Georgia, serif;
+}
+.theme-calloway .site-nav,
+.theme-calloway .transfer input,
+.theme-calloway .transfer select,
+.theme-calloway table {
+  font-family: "IBM Plex Sans", sans-serif;
+}
+.theme-calloway .site-nav { background: #6b1d1d; color: #f4eadc; }
+.theme-calloway .banner { background: #d4a017; color: #3a1f1f; }
+.theme-calloway .shell { max-width: 1080px; margin: 0 auto; padding: 1.2rem; }
+.theme-calloway .wordmark { margin: 0; font-size: 1.45rem; }
+.theme-calloway .cif { font-family: "IBM Plex Sans", sans-serif; font-size: 0.85rem; opacity: 0.8; }
+.theme-calloway table { background: #fff; }
+.theme-calloway th { background: #6b1d1d; color: #f4eadc; }
+.theme-calloway .frozen { color: #9b1c1c; font-weight: 700; }
+.theme-calloway .panel {
+  margin-top: 1rem;
+  background: #fff;
+  border: 2px solid #6b1d1d;
+  padding: 1rem;
+}
+.theme-calloway .transfer button { background: #6b1d1d; color: #f4eadc; border-radius: 0; }
