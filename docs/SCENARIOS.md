@@ -62,7 +62,7 @@ iai replay <institution_id> <from_id> <to_id> <amount> --memo "scenario"
 
 CLI: `iai discover`
 
-**Pass:** Three scores. No `low_discovery_confidence` / `unmapped_fields` cases. Console **Canonical snapshot** preview shows customer id and display name only — not email or phone.
+**Pass:** Three scores. No `low_discovery_confidence` / `unmapped_fields` cases. Console **Canonical snapshot** preview is `GET /canonical?view=agent` — customer id and display name, not email or phone.
 
 **Pytest:** `tests/test_discovery.py`
 

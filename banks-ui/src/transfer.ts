@@ -24,6 +24,7 @@ export function transferForm(institutionId: string, accounts: Array<{ id: string
 export function bindTransfer(root: HTMLElement, onDone: () => void): void {
   const form = root.querySelector<HTMLFormElement>("form[data-transfer]");
   if (!form) return;
+  let attemptKey = crypto.randomUUID();
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     const status = form.querySelector(".form-status");
@@ -35,7 +36,9 @@ export function bindTransfer(root: HTMLElement, onDone: () => void): void {
         to_account_id: String(data.get("to")),
         amount: Number(data.get("amount")),
         memo: String(data.get("memo") ?? ""),
+        idempotency_key: attemptKey,
       });
+      attemptKey = crypto.randomUUID();
       if (status) {
         status.className = `form-status ${result.succeeded ? "ok" : "error"}`;
         status.textContent = result.succeeded
@@ -44,6 +47,9 @@ export function bindTransfer(root: HTMLElement, onDone: () => void): void {
       }
       if (result.succeeded) onDone();
     } catch (err) {
+      if (err instanceof Error && err.message.startsWith("409")) {
+        attemptKey = crypto.randomUUID();
+      }
       if (status) {
         status.className = "form-status error";
         status.textContent = err instanceof Error ? err.message : "Transfer failed";

@@ -12,6 +12,7 @@ from decimal import Decimal
 from typing import Any
 from uuid import uuid4
 
+from interfaces_ai.cardholder import reject_cardholder_data
 from interfaces_ai.schema.canonical import (
     Account,
     AccountType,
@@ -69,8 +70,12 @@ class NativeAdapter(ABC):
     institution_id: str
     institution_name: str
 
+    def to_canonical(self, native: dict[str, Any]) -> CanonicalSnapshot:
+        reject_cardholder_data(native)
+        return self.map_to_canonical(native)
+
     @abstractmethod
-    def to_canonical(self, native: dict[str, Any]) -> CanonicalSnapshot: ...
+    def map_to_canonical(self, native: dict[str, Any]) -> CanonicalSnapshot: ...
 
     @abstractmethod
     def to_native_transfer(self, intent: TransferIntent, snapshot: CanonicalSnapshot) -> dict[str, Any]: ...
@@ -98,7 +103,7 @@ class RedwoodAdapter(NativeAdapter):
     institution_id = "redwood"
     institution_name = "Redwood Community Bank"
 
-    def to_canonical(self, native: dict[str, Any]) -> CanonicalSnapshot:
+    def map_to_canonical(self, native: dict[str, Any]) -> CanonicalSnapshot:
         primary = native["household"]["primary"]
         deposits = native.get("products", {}).get("deposits", [])
         accounts = []
@@ -205,7 +210,7 @@ class NorthstarAdapter(NativeAdapter):
     institution_id = "northstar"
     institution_name = "Northstar FCU"
 
-    def to_canonical(self, native: dict[str, Any]) -> CanonicalSnapshot:
+    def map_to_canonical(self, native: dict[str, Any]) -> CanonicalSnapshot:
         member = native["memberRec"]
         # nmLine is "LAST, FIRST M" — snapshot wants FIRST LAST.
         last, _, rest = member["nmLine"].partition(",")
@@ -310,7 +315,7 @@ class CallowayAdapter(NativeAdapter):
     institution_id = "calloway"
     institution_name = "Calloway State Bank"
 
-    def to_canonical(self, native: dict[str, Any]) -> CanonicalSnapshot:
+    def map_to_canonical(self, native: dict[str, Any]) -> CanonicalSnapshot:
         cust = native["cust"]
         accounts = []
         for row in native.get("acct_rel", []):

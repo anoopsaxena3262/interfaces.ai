@@ -4,7 +4,7 @@ UVICORN ?= .venv/bin/uvicorn
 PYTEST ?= .venv/bin/pytest
 BANK_UI := banks-ui
 
-.PHONY: setup venv install-py install-ui dev dev-api dev-ui test lint clean
+.PHONY: setup venv install-py install-ui dev dev-api dev-ui test coverage lint clean
 
 setup: venv install-py install-ui
 	@echo ""
@@ -33,6 +33,9 @@ dev-ui:
 
 test:
 	$(PYTEST) -q
+
+coverage:
+	$(PYTEST) -q --cov=interfaces_ai --cov-report=term-missing --cov-fail-under=95
 
 lint:
 	.venv/bin/ruff check src tests

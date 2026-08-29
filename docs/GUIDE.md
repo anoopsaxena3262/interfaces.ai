@@ -13,7 +13,7 @@ This guide is for someone who just cloned the repo and needs the mental model be
 
 1. `make setup && make dev` (or the two-terminal variant in the README).
 2. Open http://127.0.0.1:5173 and click into all three banks. Notice the **labels on screen** still match the JSON (`productInstance`, `sfx`, `acct_rel`), not a cleaned-up “Account ID” everywhere.
-3. Open http://127.0.0.1:8000/api/v1/institutions/redwood/native and then `.../canonical`. Same customer, different shape.
+3. Open http://127.0.0.1:8000/api/v1/institutions/redwood/native (portal JSON) and then `.../canonical` vs `.../canonical?view=agent`. Same customer; agent view has no email/phone/transactions.
 4. Console → Run discovery, then replay $40 Redwood `CHK-77` → `SAV-12`. Check **Operator copies**: discovery samples are kinds (`<id>`, `<money>`), not live values.
 5. Replay Calloway `900210001` → `900210099`. That is the HOLD path. Hold context in **Operator copies** is last-4 ids, not a full intent dump.
 6. Skim `src/interfaces_ai/schema/canonical.py`, then one adapter in `adapters.py`.
@@ -95,7 +95,7 @@ Required snapshot paths (the coverage denominator) are `CANONICAL_REQUIRED` in `
 “Run this snapshot-level transfer against that bank, and record what we did.”
 
 Inputs: `TransferIntent` (and the latest discovery report if one exists, for locators).  
-Output: `ReplayResult` — `run_id`, ordered `ReplayStep`s, `succeeded`, optional `native_receipt`, optional `escalation_id`.
+Output: `ReplayResult` — `run_id`, ordered `ReplayStep`s, `succeeded`, optional `native_receipt`, optional `escalation_id`, optional `idempotency_key`.
 
 Step kinds: `navigate` → `fill` → `assert` (policy) → `submit` → `post`.
 
@@ -122,11 +122,11 @@ Same API, different audience.
 
 ### In-memory `Store`
 
-Discovery reports, replay runs, and hold cases for this API process only. Not the same dict as working extracts. Both vanish on restart.
+Discovery reports, replay runs, hold cases, and replay idempotency keys for this API process only. Not the same dict as working extracts. Both vanish on restart.
 
 ## How a successful Redwood transfer moves
 
-1. UI or CLI builds `{ institution_id: "redwood", from_account_id: "CHK-77", to_account_id: "SAV-12", amount: 40 }`.
+1. UI or CLI builds `{ institution_id: "redwood", from_account_id: "CHK-77", to_account_id: "SAV-12", amount: 40 }` (portals also send `idempotency_key`).
 2. API wraps that as `TransferIntent`.
 3. Replay loads the working extract, adapter builds snapshot, resolves the two accounts.
 4. Hold rules run (amount, status, same-account, available). $40 on open accounts passes.

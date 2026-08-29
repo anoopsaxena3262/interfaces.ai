@@ -61,10 +61,11 @@ Stop with Ctrl-C. Ledger writes are in memory; **Reset ledgers** on the console,
 
 ## How to test
 
-Automated tests (schema mapping, discovery, replay, holds, API 404/422, operator-copy redaction):
+Automated tests (schema, discovery, replay, holds, API, CLI, compliance). Coverage: `make coverage` (fails under 95%).
 
 ```bash
 make test
+make coverage
 ```
 
 Lint:
@@ -111,7 +112,7 @@ Every Markdown file in the repo:
 | [docs/GUIDE.md](docs/GUIDE.md) | First-hour mental model: native vs snapshot, adapters, discovery/replay/holds, glossary. |
 | [docs/CATALOG.md](docs/CATALOG.md) | Inventory of every source file (path, type, when to touch it). |
 | [docs/PLAN.md](docs/PLAN.md) | Why the sandbox exists: goals, non-goals, concurrency, schema versioning, now vs later (what is **in the repo** vs sandbox-next vs product), risks. |
-| [docs/PLAN-COMPLIANCE.md](docs/PLAN-COMPLIANCE.md) | PII/PCI: what processing needs vs copies; Phase 1 redaction (kinds, empty SUBMIT, `redact_operator_screen`); encryption later. |
+| [docs/PLAN-COMPLIANCE.md](docs/PLAN-COMPLIANCE.md) | PII/PCI: processing vs copies; Phase 1–3 (kinds, `?view=agent`, Luhn/SAD ingest); encryption later. |
 | [docs/PLAN-DISCOVERY-EVAL.md](docs/PLAN-DISCOVERY-EVAL.md) | Exploration only: programmatic evals/judges for discovery vs LLM-as-judge (not for the current agent). |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Runtime diagram, layer rules, HTTP routes, one-worker `_working` / `Store`. |
 | [docs/DESIGN.md](docs/DESIGN.md) | Per-bank extract quirks, `data-iai-*` locators, hold reason table, redacted hold context. |

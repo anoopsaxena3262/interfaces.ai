@@ -6,6 +6,7 @@ How to change the sandbox once you already understand it. Mental model: [GUIDE.m
 
 ```bash
 make test
+make coverage
 make lint
 make dev
 ```
@@ -25,7 +26,7 @@ Python 3.11+, Node 20+. Do not commit `.venv/` or `banks-ui/node_modules/`.
 ## Adding a fourth bank
 
 1. New seed: `data/native/<id>.json` with a shape the existing adapters cannot parse.
-2. New adapter class with `to_canonical`, `to_native_transfer`, and `apply_transfer`. Register it on `ADAPTERS`.
+2. New adapter class with `map_to_canonical`, `to_native_transfer`, and `apply_transfer`. `to_canonical` on the base class runs the PAN/SAD ingest guard first. Register the class on `ADAPTERS`. Do not put PAN/CVV in `data/native/`.
 3. Row in `institutions()` (`schema/registry.py`).
 4. `NATIVE_HINTS` plus `data/contracts/<id>.html` matching the TypeScript `data-iai-*` marks.
 5. Page + CSS + route in `banks-ui`. Hub card. The page must still render **native** keys.

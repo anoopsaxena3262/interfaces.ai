@@ -115,16 +115,17 @@ Not in this increment’s code.
 3. Console snapshot preview omits email/phone. **Operator copies** panel shows discovery samples and hold context from `redact_operator_screen` (GET `/runs`).
 4. Tests: `test_discovery_samples_are_kinds_not_live_values`, replay JSON has no `majorUnits` / `fromSfx` / `native_payload`, hold context has no `memo` / `mail` / `eml`.
 
-**Phase 2 — agent view of the snapshot**
+**Phase 2 — agent view of the snapshot (implemented)**
 
-1. `GET /canonical?view=agent` (or always-redacted console fetch) omits email, phone, transactions.
-2. Schema tests still assert email on the **adapter output** (full snapshot in process), not on the console payload.
-3. Document `/native` as the portal contract; treat unauthenticated `/native` as demo-only in PLAN.
+1. `GET /canonical?view=agent` omits `customer.email`, `customer.phone`, and `transactions`. Default GET is still the full in-process snapshot (schema tests and debug dumps).
+2. Console fetches `?view=agent`. `iai canonical --agent-view` is the same filter. Full `iai canonical` is **not** an audit log.
+3. `/native` remains the portal contract (full extract). Unauthenticated `/native` is demo-only.
 
-**Phase 3 — ingest guard**
+**Phase 3 — ingest guard (implemented)**
 
-1. Shared PAN/SAD detector used by all three adapters (or registry load).
-2. Fixture that would include a card number must fail the test, not map to `AccountType.CREDIT`.
+1. Shared detector in `cardholder.py`: SAD keys (`pan`, `cvv`, `cvc`, …) and 13–19 digit strings that pass **Luhn**. Short DDA/routing (Calloway `900210001`, ABA) are not PANs.
+2. `NativeAdapter.to_canonical` and first `load_native` of a seed both call `reject_cardholder_data`. HTTP maps that to `422`.
+3. Tests use a published Visa **test** PAN in a throwaway dict (`tests/test_cardholder.py`). Never commit PAN into `data/native/`.
 
 **Phase 4 — only if Store becomes durable** (see PLAN later table)
 
@@ -141,33 +142,32 @@ Not in this increment’s code.
 | Hold context has no full intent dump | `test_escalation.py` — no `memo` key, no email |
 | Operator `/runs` is redacted | `test_api.py` — discover + Calloway HOLD, then GET `/runs` |
 | Unknown id / bad amount | `test_api.py` — 404 and 422 |
-| Console/agent canonical omits contact | API test on `view=agent` once Phase 2 lands |
-| PAN-shaped native field is rejected | New adapter test with a clearly fake PAN in a throwaway dict (never commit real PANs) |
+| Console/agent canonical omits contact | `test_api.py` — `?view=agent` on all three banks; `test_redact.py` `agent_snapshot_view`; `test_cli.py` `--agent-view` |
+| PAN-shaped native field is rejected | `test_cardholder.py` — published test PAN + `cvv`/`cvc` keys; non-Luhn 16-digit allowed; `test_api.py` 422 on dirty working extract |
 | Mapping still works | Existing `test_schema.py` name + checking $2190.40 on **in-process** snapshot |
 
 ## Files to touch
 
 | File | Change |
 | --- | --- |
-| `src/interfaces_ai/agents/discovery.py` | Samples / required paths |
-| `src/interfaces_ai/agents/replay.py` | Step payloads, receipt |
-| `src/interfaces_ai/agents/escalation.py` | `context` shape |
-| `src/interfaces_ai/schema/canonical.py` | Optional `value_kind` on `DiscoveryField`; receipt type |
-| `src/interfaces_ai/schema/adapters.py` | Phase 3 ingest guard |
-| `src/interfaces_ai/api/routes.py` | Optional agent view |
-| `banks-ui/src/pages/console.ts` | Preview without contact |
-| `tests/test_discovery.py`, `test_replay.py`, `test_escalation.py`, `test_api.py` | Assertions above |
+| `src/interfaces_ai/redact.py` | `agent_snapshot_view`; kinds / last-4 |
+| `src/interfaces_ai/cardholder.py` | Luhn + SAD/PAN walk |
+| `src/interfaces_ai/schema/adapters.py` | `to_canonical` calls ingest guard then `map_to_canonical` |
+| `src/interfaces_ai/schema/registry.py` | `load_native` rejects cardholder data on first read |
+| `src/interfaces_ai/api/routes.py` | `view=agent`; 422 on ingest reject |
+| `banks-ui/src/pages/console.ts` | Preview via `?view=agent` |
+| `tests/test_discovery.py`, `test_replay.py`, `test_escalation.py`, `test_api.py`, `test_cardholder.py` | Assertions above |
 | `docs/DESIGN.md` | Note hold `context` is redacted |
 | `docs/SCENARIOS.md` | Console preview no longer shows email |
 
-Do not add a crypto dependency in Phase 1–3. Phase 1 is in the agents, console preview, and tests listed above.
+Do not add a crypto dependency in Phase 1–3. Phase 1–3 are in the agents, `cardholder.py`, `?view=agent`, console, and tests listed above.
 
 ## Success
 
-Someone can `GET /api/v1/runs` after discovery + a blocked Northstar $9000 replay and **not** retrieve Jordan’s email, phone, or a bank-shaped transfer body. Policy still blocks. Redwood $40 still posts. Native portals still show `mail` / `eml` / `voice` on the bank pages. No encryption theater on the in-memory snapshot.
+Someone can `GET /api/v1/runs` after discovery + a blocked Northstar $9000 replay and **not** retrieve Jordan’s email, phone, or a bank-shaped transfer body. `GET /canonical?view=agent` has no contact or transactions. A Luhn-valid test PAN in a throwaway extract is rejected, not mapped. Policy still blocks. Redwood $40 still posts. Native portals still show `mail` / `eml` / `voice` on the bank pages. No encryption theater on the in-memory snapshot.
 
 ## Relationship to PLAN.md
 
 - Principles in PLAN (native portals, one write path, adapters own mutation) **do not change**.
-- Later row **Snapshot and run-log minimization** is this document. [PLAN.md now vs later](PLAN.md#now-vs-later-sandbox-vs-product): Phase 1 **in repo**; Phase 2–3 **sandbox now (not built)**; Phase 4 **product** (after durable Store).
+- Later row **Snapshot and run-log minimization** is this document. [PLAN.md now vs later](PLAN.md#now-vs-later-sandbox-vs-product): Phase 1–3 **in repo**; Phase 4 **product** (after durable Store).
 - Durable `Store` in PLAN must not ship without Phase 1, or holds become a PII warehouse.

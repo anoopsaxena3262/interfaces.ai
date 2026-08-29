@@ -44,7 +44,9 @@ Locally Vite is on 5173 and proxies `/api` to 8000.
 | GET | `/api/v1/escalations` |
 | POST | `/api/v1/dev/reset` |
 
-Run history lives in process memory (`Store`). Extracts also live in process memory after first load (`_working` in `registry.py`). Sync FastAPI handlers run in a thread pool, so two overlapping replays can lose an update; two Uvicorn workers cannot see each other’s dict. Stay on one worker until durable ledgers exist. See [PLAN.md concurrency](PLAN.md#concurrency) and [schema versioning](PLAN.md#canonical-schema-versioning).
+`GET /canonical` is the full snapshot (email/phone/transactions). `?view=agent` omits those; the console uses that. `GET /native` is the portal contract (full extract; demo-only without auth). PAN/SAD on ingest is `422`.
+
+Run history lives in process memory (`Store`), including replay `idempotency_key` → first `ReplayResult`. Same key + same body returns that run; same key + different body is `409`. Extracts also live in process memory after first load (`_working` in `registry.py`). Sync FastAPI handlers run in a thread pool, so two overlapping replays with *different* keys can still lose an update; two Uvicorn workers cannot see each other’s dict. Stay on one worker until durable ledgers exist. See [PLAN.md concurrency](PLAN.md#concurrency) and [schema versioning](PLAN.md#canonical-schema-versioning).
 
 ## Tests
 

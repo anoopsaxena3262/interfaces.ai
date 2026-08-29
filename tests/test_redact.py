@@ -3,12 +3,16 @@
 import json
 
 from interfaces_ai.redact import (
+    agent_snapshot_view,
     mask_last4,
     mask_mapping,
+    redact_email,
     redact_operator_screen,
     redact_text,
     sample_kind,
 )
+from interfaces_ai.schema.adapters import get_adapter
+from interfaces_ai.schema.registry import load_native
 
 
 def test_operator_screen_redacts_leaked_samples_and_hold_context() -> None:
@@ -92,3 +96,28 @@ def test_redact_text_scrubs_email_phone_and_long_ids() -> None:
     assert "510-555-0199" not in scrubbed
     assert "900210001" not in scrubbed
     assert "••••0001" in scrubbed
+
+
+def test_agent_snapshot_view_drops_contact_and_transactions() -> None:
+    snap = get_adapter("redwood").to_canonical(load_native("redwood"))
+    assert snap.customer.email
+    assert snap.transactions
+    view = agent_snapshot_view(snap)
+    assert "email" not in view["customer"]
+    assert "phone" not in view["customer"]
+    assert "transactions" not in view
+    assert view["customer"]["id"] == snap.customer.id
+    assert view["accounts"]
+
+
+def test_mask_last4_and_mapping_edge_cases() -> None:
+    assert mask_last4(None) == ""
+    assert mask_last4("  ") == ""
+    assert mask_last4("ab") == "ab"
+    assert mask_last4("hello") == "••••ello"
+    assert redact_email() == "••••"
+    assert mask_mapping(None) == {}
+    nested = mask_mapping({"outer": {"from_account_id": "900210001"}, "mail": "a@b.co"})
+    assert nested["outer"]["from_account_id"] == "••••0001"
+    assert nested["mail"] == "••••"
+    assert mask_mapping({"ref": "900210001"})["ref"] == "••••0001"

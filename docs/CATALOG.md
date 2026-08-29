@@ -14,7 +14,7 @@ Read order if you are new: `README.md` (doc index) → `docs/GUIDE.md` → this 
 | --- | --- | --- | --- | --- |
 | `README.md` | Markdown | `/` | Clone, run, test, bank URLs, **index of every Markdown file** | First file for clone and demo |
 | `LICENSE` | Text (GPL-3.0) | `/` | GNU GPL v3 license text | Legal; do not edit unless relicensing |
-| `Makefile` | Make | `/` | Shortcuts: `setup`, `dev`, `dev-api`, `dev-ui`, `test`, `lint`, `clean` | Daily commands |
+| `Makefile` | Make | `/` | Shortcuts: `setup`, `dev`, `test`, `coverage`, `lint`, `clean` | Daily commands |
 | `pyproject.toml` | TOML | `/` | Python package metadata, dependencies, pytest and ruff config, `iai` CLI entry | `pip install -e ".[dev]"` |
 | `.gitignore` | Git ignore | `/` | Excludes venv, node_modules, caches, `.env` | Keep secrets and generated trees out of git |
 | `.env.example` | Env template | `/` | Sample `IAI_*` settings (ports, hold thresholds) | Copy to `.env` to override defaults |
@@ -26,7 +26,7 @@ Read order if you are new: `README.md` (doc index) → `docs/GUIDE.md` → this 
 | Name | Type | Folder | Description | Usage |
 | --- | --- | --- | --- | --- |
 | `PLAN.md` | Markdown | `docs/` | Goals, non-goals, concurrency, schema versioning, **now vs later (status: in repo vs not built)**, risks | Architecture discussion and product path |
-| `PLAN-COMPLIANCE.md` | Markdown | `docs/` | PII/PCI: processing vs copies; Phase 1 redaction and `redact_operator_screen`; encrypt later | Operator copies and `/runs` |
+| `PLAN-COMPLIANCE.md` | Markdown | `docs/` | PII/PCI: processing vs copies; Phase 1–3 redaction/agent view/ingest; encrypt later | Operator copies, `/canonical?view=agent`, ingest |
 | `PLAN-DISCOVERY-EVAL.md` | Markdown | `docs/` | Explore evals/judges for discovery (programmatic yes, LLM judge not yet) | Decide before a corpus |
 | `GUIDE.md` | Markdown | `docs/` | Mental model, glossary, how a transfer/hold moves | New developer first hour |
 | `ARCHITECTURE.md` | Markdown | `docs/` | Runtime diagram, layer rules, HTTP, one-worker memory | “Where does this request go?” |
@@ -83,7 +83,8 @@ Vite’s first HTML is an empty `#app`. Discovery falls back to these published 
 | --- | --- | --- | --- | --- |
 | `__init__.py` | Python | `src/interfaces_ai/` | Package version | Import `interfaces_ai` |
 | `config.py` | Python | `src/interfaces_ai/` | `Settings` from `IAI_*` env / `.env` | Thresholds, `BANK_UI_BASE_URL`, log level |
-| `redact.py` | Python | `src/interfaces_ai/` | Last-4, sample kinds, `redact_operator_screen` | Logs; GET `/runs` console copies |
+| `redact.py` | Python | `src/interfaces_ai/` | Last-4, sample kinds, `agent_snapshot_view`, `redact_operator_screen` | Logs; GET `/runs`; `?view=agent` |
+| `cardholder.py` | Python | `src/interfaces_ai/` | Luhn, SAD/PAN walk, `reject_cardholder_data` | `load_native` and `to_canonical` ingest |
 | `observability.py` | Python | `src/interfaces_ai/` | `configure_logging`, redacting StreamHandler | `create_app` and `iai` CLI |
 | `cli.py` | Python | `src/interfaces_ai/` | CLI: `institutions`, `canonical`, `discover`, `replay` | `iai …` after install |
 
@@ -93,7 +94,7 @@ Vite’s first HTML is an empty `#app`. Discovery falls back to these published 
 | --- | --- | --- | --- | --- |
 | `__init__.py` | Python | `schema/` | Re-exports snapshot types | `from interfaces_ai.schema import …` |
 | `canonical.py` | Python | `schema/` | Pydantic models: Money, Party, Account, snapshot, intent, discovery/replay/hold types | Shared vocabulary for all agents |
-| `adapters.py` | Python | `schema/` | `RedwoodAdapter`, `NorthstarAdapter`, `CallowayAdapter`; unit conversion and `apply_transfer` | Native ↔ snapshot; ledger mutation |
+| `adapters.py` | Python | `schema/` | `RedwoodAdapter`, `NorthstarAdapter`, `CallowayAdapter`; `map_to_canonical` + ingest wrap; unit conversion and `apply_transfer` | Native ↔ snapshot; ledger mutation |
 | `registry.py` | Python | `schema/` | Institution list, `load_native` / `save_native` / `reset_native` (in-memory working copy) | Resolve id → file + adapter |
 
 ### `src/interfaces_ai/agents/`
@@ -101,7 +102,7 @@ Vite’s first HTML is an empty `#app`. Discovery falls back to these published 
 | Name | Type | Folder | Description | Usage |
 | --- | --- | --- | --- | --- |
 | `__init__.py` | Python | `agents/` | Exports Discovery, Replay, Escalation agents | Package imports |
-| `base.py` | Python | `agents/` | In-process `Store` for reports, runs, hold cases | Run history for this API process |
+| `base.py` | Python | `agents/` | In-process `Store` for reports, runs, hold cases, replay idempotency | Run history for this API process |
 | `discovery.py` | Python | `agents/` | Locator parse, `NATIVE_HINTS`, coverage score, contract fallback | `POST /agents/discover`, `iai discover` |
 | `replay.py` | Python | `agents/` | Step machine: navigate → fill → policy → submit → post | `POST /agents/replay`, bank/console transfers |
 | `escalation.py` | Python | `agents/` | Hold rules: amount, status, coverage, failed steps | Opens `EscalationCase`; does not call an LLM |
@@ -125,7 +126,10 @@ Vite’s first HTML is an empty `#app`. Discovery falls back to these published 
 | `test_discovery.py` | Python (pytest) | `tests/` | Locator extract, coverage score, empty-SPA fallback | Discovery behavior |
 | `test_replay.py` | Python (pytest) | `tests/` | Redwood post; Calloway HOLD block; Northstar large amount | Write vs no-write |
 | `test_escalation.py` | Python (pytest) | `tests/` | Amount + HOLD are distinct reason codes | Hold policy |
-| `test_api.py` | Python (pytest) | `tests/` | Health, 404/422, `/runs` redaction after discover + HOLD | HTTP including error and compliance paths |
+| `test_api.py` | Python (pytest) | `tests/` | Health, 404/422/409, `?view=agent`, ingest 422, replay idempotency, `/runs` redaction | HTTP including error and compliance paths |
+| `test_cardholder.py` | Python (pytest) | `tests/` | Luhn, SAD keys, test PAN rejected, seeds still load | Compliance Phase 3 |
+| `test_cli.py` | Python (pytest) | `tests/` | `iai` institutions, canonical, `--agent-view`, discover, replay | CLI |
+| `test_registry.py` | Python (pytest) | `tests/` | `reset_native` one FI; empty Store discovery lookup | Ledgers / Store |
 | `redwood.html` | HTML fixture | `tests/fixtures/` | Sample marked-up page for discovery unit tests | Injected via `html_loader` |
 
 ---

@@ -38,7 +38,7 @@ export async function renderConsole(app: HTMLElement): Promise<void> {
   ]);
   const snapshots: Record<string, CanonicalSnapshot> = {};
   for (const inst of institutions) {
-    snapshots[inst.id] = await getCanonical(inst.id);
+    snapshots[inst.id] = await getCanonical(inst.id, "agent");
   }
 
   const latestDiscovery = (id: string) => runs.discoveries.find((d) => d.institution_id === id);
@@ -148,7 +148,7 @@ export async function renderConsole(app: HTMLElement): Promise<void> {
   const canonicalPre = app.querySelector("[data-canonical]");
 
   async function fillAccounts(id: string) {
-    const snap = snapshots[id] ?? (await getCanonical(id));
+    const snap = snapshots[id] ?? (await getCanonical(id, "agent"));
     snapshots[id] = snap;
     if (fromSelect && toSelect) {
       fromSelect.innerHTML = snap.accounts
@@ -173,6 +173,7 @@ export async function renderConsole(app: HTMLElement): Promise<void> {
     await renderConsole(app);
   });
 
+  let replayAttemptKey = crypto.randomUUID();
   app.querySelector<HTMLFormElement>("[data-console-replay]")?.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form = event.currentTarget as HTMLFormElement;
@@ -183,7 +184,9 @@ export async function renderConsole(app: HTMLElement): Promise<void> {
       to_account_id: String(data.get("to_account_id")),
       amount: Number(data.get("amount")),
       memo: String(data.get("memo")),
+      idempotency_key: replayAttemptKey,
     });
+    replayAttemptKey = crypto.randomUUID();
     const steps = app.querySelector("[data-steps]");
     if (steps) {
       steps.innerHTML = result.steps

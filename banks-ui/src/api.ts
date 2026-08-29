@@ -14,8 +14,9 @@ export function getNative<T>(id: string): Promise<T> {
   return api<T>(`/api/v1/institutions/${id}/native`);
 }
 
-export function getCanonical(id: string) {
-  return api<CanonicalSnapshot>(`/api/v1/institutions/${id}/canonical`);
+export function getCanonical(id: string, view?: "agent") {
+  const q = view === "agent" ? "?view=agent" : "";
+  return api<CanonicalSnapshot>(`/api/v1/institutions/${id}/canonical${q}`);
 }
 
 export type Money = { amount: string; currency: string };
@@ -36,7 +37,7 @@ export type CanonicalSnapshot = {
   as_of: string;
   customer: { id: string; display_name: string; email?: string | null; phone?: string | null };
   accounts: CanonicalAccount[];
-  transactions: Array<{
+  transactions?: Array<{
     id: string;
     account_id: string;
     posted_on: string;
@@ -61,6 +62,7 @@ export function replayTransfer(body: {
   to_account_id: string;
   amount: number;
   memo: string;
+  idempotency_key?: string;
 }): Promise<ReplayResult> {
   return api<ReplayResult>("/api/v1/agents/replay", { method: "POST", body: JSON.stringify(body) });
 }

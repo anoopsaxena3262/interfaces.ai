@@ -11,6 +11,8 @@ import copy
 import re
 from typing import Any
 
+from interfaces_ai.schema.canonical import CanonicalSnapshot
+
 # Safety net on log records (does not replace field-level masking).
 _EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 _PHONE_RE = re.compile(
@@ -125,6 +127,17 @@ def redact_escalation_case(case: dict[str, Any]) -> dict[str, Any]:
     data = copy.deepcopy(case)
     data["summary"] = redact_text(str(data.get("summary") or ""))
     data["context"] = mask_mapping(data.get("context") if isinstance(data.get("context"), dict) else {})
+    return data
+
+
+def agent_snapshot_view(snapshot: CanonicalSnapshot) -> dict[str, Any]:
+    """GET /canonical?view=agent: contact and transactions are unused by agents."""
+    data = snapshot.model_dump(mode="json")
+    customer = dict(data.get("customer") or {})
+    customer.pop("email", None)
+    customer.pop("phone", None)
+    data["customer"] = customer
+    data.pop("transactions", None)
     return data
 
 

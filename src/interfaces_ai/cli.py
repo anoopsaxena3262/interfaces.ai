@@ -14,6 +14,7 @@ from interfaces_ai.agents.escalation import EscalationAgent
 from interfaces_ai.agents.replay import ReplayEngine
 from interfaces_ai.config import get_settings
 from interfaces_ai.observability import configure_logging
+from interfaces_ai.redact import agent_snapshot_view
 from interfaces_ai.schema.adapters import get_adapter
 from interfaces_ai.schema.canonical import Money, TransferIntent
 from interfaces_ai.schema.registry import institutions, load_native
@@ -28,6 +29,11 @@ def main(argv: list[str] | None = None) -> int:
 
     show = sub.add_parser("canonical", help="Print canonical snapshot for a bank")
     show.add_argument("institution_id")
+    show.add_argument(
+        "--agent-view",
+        action="store_true",
+        help="Omit email, phone, and transactions (same as GET /canonical?view=agent). Full dump is not an audit log.",
+    )
 
     disc = sub.add_parser("discover", help="Run discovery against one or all banks")
     disc.add_argument("institution_id", nargs="?")
@@ -49,7 +55,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "canonical":
         native = load_native(args.institution_id)
         snapshot = get_adapter(args.institution_id).to_canonical(native)
-        print(snapshot.model_dump_json(indent=2))
+        if args.agent_view:
+            print(json.dumps(agent_snapshot_view(snapshot), indent=2, default=str))
+        else:
+            print(snapshot.model_dump_json(indent=2))
         return 0
 
     store = Store()

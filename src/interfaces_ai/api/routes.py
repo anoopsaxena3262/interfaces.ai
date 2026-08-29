@@ -8,10 +8,17 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from interfaces_ai.redact import redact_discovery_report, redact_escalation_case, redact_operator_screen
+from interfaces_ai.agents.base import IdempotencyConflict, intent_fingerprint
+from interfaces_ai.cardholder import CardholderDataRejected
+from interfaces_ai.redact import (
+    agent_snapshot_view,
+    redact_discovery_report,
+    redact_escalation_case,
+    redact_operator_screen,
+)
 from interfaces_ai.schema.adapters import get_adapter
 from interfaces_ai.schema.canonical import Money, TransferIntent
 from interfaces_ai.schema.registry import institutions, load_native, reset_native
@@ -24,6 +31,7 @@ class TransferRequest(BaseModel):
     amount: Decimal = Field(gt=0)
     currency: str = "USD"
     memo: str = ""
+    idempotency_key: str | None = Field(default=None, max_length=128)
 
 
 class DiscoverRequest(BaseModel):
@@ -52,20 +60,37 @@ def build_router() -> APIRouter:
 
     @router.get("/api/v1/institutions/{institution_id}/native")
     def native_payload(institution_id: str) -> dict:
-        """Working extract (bank-shaped). Portals must render these keys, not the snapshot."""
+        """Working extract (bank-shaped). Portals must render these keys, not the snapshot.
+
+        Unauthenticated `/native` is demo-only. It is the portal contract, not an audit log.
+        """
         try:
             return load_native(institution_id)
         except KeyError as exc:
             raise HTTPException(404, str(exc)) from exc
+        except CardholderDataRejected as exc:
+            raise HTTPException(422, str(exc)) from exc
 
     @router.get("/api/v1/institutions/{institution_id}/canonical")
-    def canonical_payload(institution_id: str) -> dict:
+    def canonical_payload(
+        institution_id: str,
+        view: str | None = Query(
+            default=None,
+            description="Omit for full snapshot; `agent` drops contact and transactions.",
+        ),
+    ) -> dict:
         try:
             native = load_native(institution_id)
             snapshot = get_adapter(institution_id).to_canonical(native)
         except KeyError as exc:
             raise HTTPException(404, str(exc)) from exc
-        return snapshot.model_dump(mode="json")
+        except CardholderDataRejected as exc:
+            raise HTTPException(422, str(exc)) from exc
+        if view is None or view == "":
+            return snapshot.model_dump(mode="json")
+        if view == "agent":
+            return agent_snapshot_view(snapshot)
+        raise HTTPException(422, "view must be omitted or 'agent'")
 
     @router.post("/api/v1/agents/discover")
     def discover(request: Request, body: DiscoverRequest | None = None) -> dict:
@@ -101,8 +126,27 @@ def build_router() -> APIRouter:
             memo=body.memo,
         )
         discovery = request.app.state.store.latest_discovery(body.institution_id)
-        result = request.app.state.replay.replay(intent, discovery)
-        request.app.state.store.add_replay(result)
+        key = (body.idempotency_key or "").strip() or None
+
+        def _run():
+            result = request.app.state.replay.replay(intent, discovery)
+            if key:
+                return result.model_copy(update={"idempotency_key": key})
+            return result
+
+        store = request.app.state.store
+        try:
+            result = store.replay_once(
+                body.institution_id,
+                key,
+                intent_fingerprint(intent),
+                _run,
+            )
+        except IdempotencyConflict as exc:
+            raise HTTPException(
+                409,
+                "idempotency_key already used with a different transfer body",
+            ) from exc
         return result.model_dump(mode="json")
 
     @router.get("/api/v1/runs")

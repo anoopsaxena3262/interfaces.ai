@@ -178,3 +178,4 @@ class ReplayResult(BaseModel):
     succeeded: bool
     native_receipt: dict[str, Any] | None = None
     escalation_id: str | None = None
+    idempotency_key: str | None = None  # client key; stored in-process only

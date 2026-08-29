@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from interfaces_ai.cardholder import reject_cardholder_data
 from interfaces_ai.schema.adapters import ADAPTERS, NativeAdapter
 
 # registry.py is src/interfaces_ai/schema/ → parents[3] is the repo root.
@@ -75,8 +76,12 @@ def load_native(institution_id: str) -> dict[str, Any]:
     """Return a deep copy of the working extract so callers cannot mutate `_working` by accident."""
     if institution_id not in _working:
         inst = get_institution(institution_id)
-        _working[institution_id] = json.loads(inst.native_file.read_text())
-    return copy.deepcopy(_working[institution_id])
+        blob = json.loads(inst.native_file.read_text())
+        reject_cardholder_data(blob)
+        _working[institution_id] = blob
+    blob = copy.deepcopy(_working[institution_id])
+    reject_cardholder_data(blob)
+    return blob
 
 
 def save_native(institution_id: str, payload: dict[str, Any]) -> None:

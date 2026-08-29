@@ -54,3 +54,40 @@ def test_discovery_samples_are_kinds_not_live_values() -> None:
     assert "2190.40" not in blob
     assert "HH-20441" not in blob
     assert {field.sample for field in report.fields} <= {"<id>", "<money>", "<string>", "<enum>"}
+
+
+def test_discovery_records_missing_when_hint_absent(monkeypatch) -> None:
+    from interfaces_ai.agents import discovery as d
+
+    hints = {bank: dict(paths) for bank, paths in d.NATIVE_HINTS.items()}
+    hints["redwood"] = {k: v for k, v in hints["redwood"].items() if k != "customer.id"}
+    monkeypatch.setattr(d, "NATIVE_HINTS", hints)
+    report = DiscoveryAgent(html_loader=lambda _url: FIXTURE.read_text()).discover("redwood")
+    assert "customer.id" in report.missing_canonical_paths
+
+
+def test_html_fetch_error_falls_back_to_published_contract(monkeypatch) -> None:
+    import httpx
+
+    def boom(url: str, timeout: float = 3.0):
+        raise httpx.ConnectError("offline", request=httpx.Request("GET", url))
+
+    monkeypatch.setattr(httpx, "get", boom)
+    report = DiscoveryAgent().discover("redwood")
+    assert any(action.name == "transfer.submit" for action in report.actions)
+
+
+def test_published_contract_missing_file_is_empty(tmp_path, monkeypatch) -> None:
+    from interfaces_ai.agents import discovery as d
+
+    monkeypatch.setattr(d, "CONTRACT_DIR", tmp_path)
+    assert d._published_contract_html("redwood") == ""
+
+
+def test_sample_for_unknown_path_is_none() -> None:
+    from interfaces_ai.agents.discovery import _sample_for
+    from interfaces_ai.schema.adapters import get_adapter
+    from interfaces_ai.schema.registry import load_native
+
+    snap = get_adapter("redwood").to_canonical(load_native("redwood"))
+    assert _sample_for(snap, "not.a.path") is None

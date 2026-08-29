@@ -1,8 +1,11 @@
 """Adapters: same person and $2190.40 checking after unit conversion; Calloway HOLD maps."""
 
+from datetime import date, datetime
 from decimal import Decimal
 
-from interfaces_ai.schema.adapters import get_adapter
+import pytest
+
+from interfaces_ai.schema.adapters import _phone, get_adapter, parse_day
 from interfaces_ai.schema.canonical import AccountType, TransactionDirection
 from interfaces_ai.schema.registry import load_native
 
@@ -13,7 +16,7 @@ def test_all_three_extracts_describe_the_same_person() -> None:
     for snap in snapshots.values():
         assert "jordan" in snap.customer.display_name.lower()
         assert "hale" in snap.customer.display_name.lower()
-        assert snap.customer.email == "jordan.hale@example.net"
+        assert snap.customer.email == "jordan.hale@example.net"  # in-process snapshot, not ?view=agent
         assert {acct.type for acct in snap.accounts} >= {AccountType.CHECKING, AccountType.SAVINGS}
         assert snap.transactions
         assert all(txn.direction in TransactionDirection for txn in snap.transactions)
@@ -30,3 +33,13 @@ def test_calloway_hold_status_survives_mapping() -> None:
     loc = next(a for a in snap.accounts if a.id == "900210099")
     assert loc.status == "hold"
     assert loc.type == AccountType.LOAN
+
+
+def test_parse_day_and_phone_helpers() -> None:
+    assert parse_day(datetime(2026, 8, 28, 12, 0, 0)) == date(2026, 8, 28)
+    assert parse_day(date(2026, 8, 28)) == date(2026, 8, 28)
+    with pytest.raises(ValueError):
+        parse_day("not-a-date")
+    assert _phone(None) is None
+    assert _phone("5105550199") == "+1-510-555-0199"
+    assert _phone("ext") == "ext"

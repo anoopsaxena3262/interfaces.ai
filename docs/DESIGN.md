@@ -39,7 +39,7 @@ A transfer intent names canonical account ids. The adapter builds the bank body 
 | Same account or amount above available | `policy` |
 | A replay step failed | `replay_step_failed` |
 
-Hold `context` is redacted: last-4 account ids, amount, statuses, reason paths. It does not dump `TransferIntent` (memo, email) or native transfer bodies. See [PLAN-COMPLIANCE.md](PLAN-COMPLIANCE.md) Phase 1.
+Hold `context` is redacted: last-4 account ids, amount, statuses, reason paths. It does not dump `TransferIntent` (memo, email) or native transfer bodies. Console snapshot preview uses `GET /canonical?view=agent` (no email/phone/transactions). See [PLAN-COMPLIANCE.md](PLAN-COMPLIANCE.md).
 
 ## Out of scope for this sandbox
 
