@@ -1,6 +1,6 @@
 # Maintaining this repo
 
-How to change the sandbox once you already understand it. For the mental model and glossary, start with [GUIDE.md](GUIDE.md). For why the pieces exist, see [PLAN.md](PLAN.md). For snapshot/log PII and the PCI guard, see [PLAN-COMPLIANCE.md](PLAN-COMPLIANCE.md). For walking discovery, post, and holds by hand, see [SCENARIOS.md](SCENARIOS.md).
+How to change the sandbox once you already understand it. Mental model: [GUIDE.md](GUIDE.md). Why the pieces exist: [PLAN.md](PLAN.md). PII/PCI copies: [PLAN-COMPLIANCE.md](PLAN-COMPLIANCE.md). Discovery evals: [PLAN-DISCOVERY-EVAL.md](PLAN-DISCOVERY-EVAL.md). Manual walks: [SCENARIOS.md](SCENARIOS.md). Runtime: [ARCHITECTURE.md](ARCHITECTURE.md). Doc index: [README.md](../README.md#docs).
 
 ## Commands
 
@@ -53,6 +53,7 @@ Tests inject HTML through `html_loader`. Keep the default loader as HTTP GET. Wh
 | `IAI_BANK_UI_BASE_URL` | `http://127.0.0.1:5173` |
 | `IAI_TRANSFER_ESCALATION_USD` | `5000` |
 | `IAI_DISCOVERY_MIN_CONFIDENCE` | `0.72` |
+| `IAI_LOG_LEVEL` | `INFO` (`DEBUG` adds per-field discovery and per-step replay lines; still masked) |
 
 ## If something looks wrong
 
@@ -61,4 +62,5 @@ Tests inject HTML through `html_loader`. Keep the default loader as HTTP GET. Wh
 | Portal error, hub ok | API not on 8000 |
 | Discovery has locators but empty actions after a new bank | missing `data/contracts/<id>.html` |
 | Balance did not move | in-memory extract; reload the page. Reset if you restarted the API |
+| Two posts, one “lost” or workers disagree on balances | One Uvicorn worker only. `_working` is process-local and `load`/`save` is not atomic. See PLAN.md concurrency |
 | `Unknown institution` | id missing from `ADAPTERS` and `institutions()` |

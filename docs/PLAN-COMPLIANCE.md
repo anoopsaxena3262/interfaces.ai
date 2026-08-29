@@ -1,6 +1,6 @@
 # Plan: snapshot and log minimization (PII, PCI guard)
 
-This is the increment that follows the [data-sensitivity section in PLAN.md](PLAN.md#data-sensitivity-pci-dss-and-pii). Overall design stays there. This file is the **how** for redaction, what stays on `CanonicalSnapshot`, and encryption.
+This is the increment that follows the [data-sensitivity section in PLAN.md](PLAN.md#data-sensitivity-pci-dss-and-pii). Overall design stays there. This file is the **how** for redaction, what stays on `CanonicalSnapshot`, and encryption. Operator console **Operator copies** and `GET /api/v1/runs` go through `redact_operator_screen`. Doc index: [README.md](../README.md#docs).
 
 PCI DSS is **out of scope** for the current fixtures (no PAN/SAD). Banking PII is **in** the snapshot and every run copy. Do not encrypt the working snapshot to “solve” that.
 
@@ -108,12 +108,12 @@ Not in this increment’s code.
 
 ## Phased delivery
 
-**Phase 1 — copies (do first, sandbox-sized)**
+**Phase 1 — copies (implemented)**
 
-1. Discovery samples → kinds, not values.
-2. Replay step/receipt/hold context redaction as above.
-3. Console preview drops email/phone.
-4. Tests: discovery report has no `@` or `2190.40`; replay JSON has no `majorUnits` / `fromSfx` body; hold context has no `mail` / `eml`.
+1. Discovery samples are kind tokens (`<id>`, `<money>`, …), not live extract values. `_sample_for` is a presence check only.
+2. Replay SUBMIT payload is empty; stored receipt is `{receipt_id}` only. Hold context has last-4 ids, amount, statuses — not `intent.model_dump()`.
+3. Console snapshot preview omits email/phone. **Operator copies** panel shows discovery samples and hold context from `redact_operator_screen` (GET `/runs`).
+4. Tests: `test_discovery_samples_are_kinds_not_live_values`, replay JSON has no `majorUnits` / `fromSfx` / `native_payload`, hold context has no `memo` / `mail` / `eml`.
 
 **Phase 2 — agent view of the snapshot**
 
@@ -139,6 +139,8 @@ Not in this increment’s code.
 | Discovery does not echo live PII | `test_discovery.py` — sample is kind/presence; body has no email, no `510-555` |
 | Successful replay history has no native body | `test_replay.py` — SUBMIT payload empty or locators only; receipt has `receipt_id` |
 | Hold context has no full intent dump | `test_escalation.py` — no `memo` key, no email |
+| Operator `/runs` is redacted | `test_api.py` — discover + Calloway HOLD, then GET `/runs` |
+| Unknown id / bad amount | `test_api.py` — 404 and 422 |
 | Console/agent canonical omits contact | API test on `view=agent` once Phase 2 lands |
 | PAN-shaped native field is rejected | New adapter test with a clearly fake PAN in a throwaway dict (never commit real PANs) |
 | Mapping still works | Existing `test_schema.py` name + checking $2190.40 on **in-process** snapshot |
@@ -158,7 +160,7 @@ Not in this increment’s code.
 | `docs/DESIGN.md` | Note hold `context` is redacted |
 | `docs/SCENARIOS.md` | Console preview no longer shows email |
 
-Do not add a crypto dependency in Phase 1–3.
+Do not add a crypto dependency in Phase 1–3. Phase 1 is in the agents, console preview, and tests listed above.
 
 ## Success
 
@@ -167,5 +169,5 @@ Someone can `GET /api/v1/runs` after discovery + a blocked Northstar $9000 repla
 ## Relationship to PLAN.md
 
 - Principles in PLAN (native portals, one write path, adapters own mutation) **do not change**.
-- Later row **Snapshot and run-log minimization** is this document.
+- Later row **Snapshot and run-log minimization** is this document. [PLAN.md now vs later](PLAN.md#now-vs-later-sandbox-vs-product): Phase 1 **in repo**; Phase 2–3 **sandbox now (not built)**; Phase 4 **product** (after durable Store).
 - Durable `Store` in PLAN must not ship without Phase 1, or holds become a PII warehouse.

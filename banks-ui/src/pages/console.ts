@@ -7,7 +7,7 @@ type DiscoveryReport = {
   confidence: number;
   missing_canonical_paths: string[];
   unmapped_native_paths: string[];
-  fields: Array<{ canonical_path: string; native_path: string }>;
+  fields: Array<{ canonical_path: string; native_path: string; sample?: string }>;
 };
 type Escalation = {
   id: string;
@@ -17,6 +17,7 @@ type Escalation = {
   summary: string;
   reasons: string[];
   status: string;
+  context?: Record<string, unknown>;
 };
 type Replay = {
   run_id: string;
@@ -103,6 +104,23 @@ export async function renderConsole(app: HTMLElement): Promise<void> {
         </section>
       </div>
       <section class="panel" style="margin-top:1rem">
+        <h2>Operator copies</h2>
+        <p class="lede">
+          Discovery samples and hold context are redacted together before this screen
+          (<code>redact_operator_screen</code>). Kinds only for samples; last-4 ids on holds.
+        </p>
+        <div class="row">
+          <div>
+            <h3>Discovery samples</h3>
+            ${operatorDiscoveryHtml(latestDiscovery(defaultBank))}
+          </div>
+          <div>
+            <h3>Hold context</h3>
+            ${operatorHoldHtml(runs.escalations[0])}
+          </div>
+        </div>
+      </section>
+      <section class="panel" style="margin-top:1rem">
           <h2>Hold queue</h2>
         ${
           runs.escalations.length === 0
@@ -183,11 +201,34 @@ export async function renderConsole(app: HTMLElement): Promise<void> {
   });
 }
 
+function operatorDiscoveryHtml(report: DiscoveryReport | undefined): string {
+  if (!report?.fields?.length) {
+    return "<p>Run discovery to see kind tokens for each required path.</p>";
+  }
+  const rows = report.fields
+    .map(
+      (f) =>
+        `<tr><td>${escapeHtml(f.canonical_path)}</td><td>${escapeHtml(f.native_path)}</td><td><code>${escapeHtml(String(f.sample ?? ""))}</code></td></tr>`,
+    )
+    .join("");
+  return `<table><thead><tr><th>Snapshot path</th><th>Native path</th><th>Sample</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function operatorHoldHtml(caseRow: Escalation | undefined): string {
+  if (!caseRow) {
+    return "<p>No hold yet. Context appears here after a blocked replay.</p>";
+  }
+  return `<pre>${escapeHtml(JSON.stringify(caseRow.context ?? {}, null, 2))}</pre>`;
+}
+
 function preview(snapshot: CanonicalSnapshot | undefined): string {
   if (!snapshot) return "";
   return JSON.stringify(
     {
-      customer: snapshot.customer,
+      customer: {
+        id: snapshot.customer.id,
+        display_name: snapshot.customer.display_name,
+      },
       accounts: snapshot.accounts.map((a) => ({
         id: a.id,
         type: a.type,

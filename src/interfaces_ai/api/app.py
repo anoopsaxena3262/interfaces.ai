@@ -1,3 +1,5 @@
+"""FastAPI factory. Uvicorn loads `app` from this module (`interfaces_ai.api.app:app`)."""
+
 from __future__ import annotations
 
 from fastapi import FastAPI
@@ -9,10 +11,13 @@ from interfaces_ai.agents.escalation import EscalationAgent
 from interfaces_ai.agents.replay import ReplayEngine
 from interfaces_ai.api.routes import build_router
 from interfaces_ai.config import get_settings
+from interfaces_ai.observability import configure_logging
 
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    configure_logging(settings.log_level)
+    # One Store + one ReplayEngine for the process so console and bank forms share run history.
     store = Store()
     discovery = DiscoveryAgent(settings=settings)
     escalation = EscalationAgent(store=store, settings=settings)
@@ -23,6 +28,7 @@ def create_app() -> FastAPI:
         version="0.1.0",
         description="Shared snapshot over three mock core extracts, plus discovery, replay, and hold-for-review.",
     )
+    # Vite only. Do not widen this if the API is ever bound off localhost.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],

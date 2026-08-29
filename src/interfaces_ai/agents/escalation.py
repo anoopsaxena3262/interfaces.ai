@@ -1,3 +1,9 @@
+"""Runtime hold gate. Enum reasons only — do not parse summary text.
+
+evaluate_transfer runs before apply_transfer. maybe_open_for_replay covers
+failed mapping steps that never reached policy.
+"""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -5,6 +11,8 @@ from uuid import uuid4
 
 from interfaces_ai.agents.base import Store
 from interfaces_ai.config import Settings, get_settings
+from interfaces_ai.observability import get_logger
+from interfaces_ai.redact import mask_last4, mask_mapping
 from interfaces_ai.schema.canonical import (
     Account,
     CanonicalSnapshot,
@@ -15,6 +23,8 @@ from interfaces_ai.schema.canonical import (
     ReplayResult,
     TransferIntent,
 )
+
+log = get_logger("interfaces_ai.escalation")
 
 
 class EscalationDecision:
@@ -74,9 +84,10 @@ class EscalationAgent:
     ) -> EscalationDecision | None:
         reasons: list[EscalationReason] = []
         if intent.amount.as_float() >= self.settings.transfer_escalation_usd:
-            reasons.append(EscalationReason.AMOUNT_THRESHOLD)
+            reasons.append(EscalationReason.AMOUNT_THRESHOLD)  # inclusive: $5000 holds
         if source.status.lower() != "open" or dest.status.lower() != "open":
             reasons.append(EscalationReason.ACCOUNT_STATUS)
+        # POLICY is overloaded: same-account and NSF share one code until we split the enum.
         if source.id == dest.id:
             reasons.append(EscalationReason.POLICY)
         if intent.amount.as_float() > source.available.as_float():
@@ -94,14 +105,19 @@ class EscalationAgent:
             severity=severity,
             summary=(
                 f"Transfer {intent.amount.amount} {intent.amount.currency} "
-                f"{source.id} → {dest.id} blocked ({', '.join(r.value for r in reasons)})"
+                f"{mask_last4(source.id)} → {mask_last4(dest.id)} blocked "
+                f"({', '.join(r.value for r in reasons)})"
             ),
-            context={
-                "intent": intent.model_dump(mode="json"),
-                "source_status": source.status,
-                "dest_status": dest.status,
-                "available": str(source.available.amount),
-            },
+            context=mask_mapping(
+                {
+                    "from_account_id": intent.from_account_id,
+                    "to_account_id": intent.to_account_id,
+                    "amount": str(intent.amount.amount),
+                    "currency": intent.amount.currency,
+                    "source_status": source.status,
+                    "dest_status": dest.status,
+                }
+            ),
         )
 
     def maybe_open_for_replay(self, result: ReplayResult, snapshot: CanonicalSnapshot) -> EscalationCase | None:
@@ -113,11 +129,13 @@ class EscalationAgent:
             reasons=[EscalationReason.REPLAY_STEP_FAILED],
             severity=EscalationSeverity.HIGH,
             summary=failed[0].detail or failed[0].description,
-            context={
-                "run_id": result.run_id,
-                "customer_id": snapshot.customer.id,
-                "failed_step": failed[0].model_dump(mode="json"),
-            },
+            context=mask_mapping(
+                {
+                    "run_id": result.run_id,
+                    "customer_id": snapshot.customer.id,
+                    "failed_step": failed[0].model_dump(mode="json"),
+                }
+            ),
         )
         return self.open(decision)
 
@@ -137,5 +155,12 @@ class EscalationAgent:
             summary=decision.summary,
             context=decision.context,
             status="open",
+        )
+        log.info(
+            "hold opened id=%s institution=%s severity=%s reasons=%s",
+            case.id,
+            case.institution_id,
+            case.severity.value,
+            [reason.value for reason in case.reasons],
         )
         return self.store.add_escalation(case)

@@ -1,6 +1,6 @@
 # Test scenarios
 
-Step-by-step checks for discovery, a successful transfer, and holds. For why the rules exist, see [DESIGN.md](DESIGN.md). For how to change a bank or a limit, see [DEVELOPER.md](DEVELOPER.md).
+Step-by-step checks for discovery, a successful transfer, and holds. Hold rules: [DESIGN.md](DESIGN.md). Change a bank or limit: [DEVELOPER.md](DEVELOPER.md). Mental model: [GUIDE.md](GUIDE.md). Redacted operator copies: [PLAN-COMPLIANCE.md](PLAN-COMPLIANCE.md). Doc index: [README.md](../README.md#docs).
 
 Holds are not a separate scenario file. A case opens when **replay** hits a rule in `src/interfaces_ai/agents/escalation.py`. You trigger a scenario by choosing institution, from/to accounts, and amount.
 
@@ -26,7 +26,7 @@ make test
 2. Under **Replay transfer**, set **Institution** (account dropdowns reload for that bank).
 3. Set **From**, **To**, **Amount (USD)**.
 4. Click **Replay**.
-5. Read the step list under the form, then the **Hold queue** at the bottom.
+5. Read the step list under the form, then the **Hold queue** at the bottom. After discovery or a hold, **Operator copies** should show kinds / last-4 ids (see [PLAN-COMPLIANCE.md](PLAN-COMPLIANCE.md)), not live samples or email/phone.
 
 You can run the same intent on a bank portal (`/redwood`, `/northstar`, `/calloway`) instead. The portal still calls replay. Status text is `Posted (…)` or `Held for review — esc-…`.
 
@@ -62,7 +62,7 @@ iai replay <institution_id> <from_id> <to_id> <amount> --memo "scenario"
 
 CLI: `iai discover`
 
-**Pass:** Three scores. No `low_discovery_confidence` / `unmapped_fields` cases.
+**Pass:** Three scores. No `low_discovery_confidence` / `unmapped_fields` cases. Console **Canonical snapshot** preview shows customer id and display name only — not email or phone.
 
 **Pytest:** `tests/test_discovery.py`
 

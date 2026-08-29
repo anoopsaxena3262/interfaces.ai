@@ -1,11 +1,13 @@
-from __future__ import annotations
+"""In-memory run log for local development. Swap for a DB in production.
+
+Discoveries, replays, and holds die with the process. Reset-ledgers does not
+clear this store — only restart (or a new Store()) does.
+"""
 
 from interfaces_ai.schema.canonical import DiscoveryReport, EscalationCase, ReplayResult
 
 
 class Store:
-    """In-memory run log for local development. Swap for a DB in production."""
-
     def __init__(self) -> None:
         self.discoveries: list[DiscoveryReport] = []
         self.replays: list[ReplayResult] = []
@@ -24,6 +26,7 @@ class Store:
         return case
 
     def latest_discovery(self, institution_id: str) -> DiscoveryReport | None:
+        """Most recent report for this bank (newest-first list). Used to attach locators to replay."""
         for report in self.discoveries:
             if report.institution_id == institution_id:
                 return report

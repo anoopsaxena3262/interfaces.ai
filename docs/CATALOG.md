@@ -4,7 +4,7 @@ Every **source file** in this repo, with what it is and when you touch it.
 
 Not listed (generated or local, see `.gitignore`): `.venv/`, `banks-ui/node_modules/`, `banks-ui/dist/`, `__pycache__/`, `.pytest_cache/`, `.env`.
 
-Read order if you are new: `README.md` → `docs/GUIDE.md` → this catalog when you need a specific file.
+Read order if you are new: `README.md` (doc index) → `docs/GUIDE.md` → this catalog when you need a specific file.
 
 ---
 
@@ -12,7 +12,7 @@ Read order if you are new: `README.md` → `docs/GUIDE.md` → this catalog when
 
 | Name | Type | Folder | Description | Usage |
 | --- | --- | --- | --- | --- |
-| `README.md` | Markdown | `/` | Setup, how to run, bank URLs, links to docs | First file for clone and demo |
+| `README.md` | Markdown | `/` | Clone, run, test, bank URLs, **index of every Markdown file** | First file for clone and demo |
 | `LICENSE` | Text (GPL-3.0) | `/` | GNU GPL v3 license text | Legal; do not edit unless relicensing |
 | `Makefile` | Make | `/` | Shortcuts: `setup`, `dev`, `dev-api`, `dev-ui`, `test`, `lint`, `clean` | Daily commands |
 | `pyproject.toml` | TOML | `/` | Python package metadata, dependencies, pytest and ruff config, `iai` CLI entry | `pip install -e ".[dev]"` |
@@ -25,14 +25,15 @@ Read order if you are new: `README.md` → `docs/GUIDE.md` → this catalog when
 
 | Name | Type | Folder | Description | Usage |
 | --- | --- | --- | --- | --- |
-| `PLAN.md` | Markdown | `docs/` | Overall design: goals, jobs/async, later-vs-now, risks and ideal solutions | Architecture discussion and product path |
-| `PLAN-COMPLIANCE.md` | Markdown | `docs/` | Increment: minimize PII in snapshot/logs, PCI ingest guard, when (not) to encrypt | Implement before Store is durable |
-| `GUIDE.md` | Markdown | `docs/` | Mental model, glossary, how a transfer/hold moves, suggested read order | New developer first hour |
-| `ARCHITECTURE.md` | Markdown | `docs/` | Runtime diagram, layer rules, HTTP routes | “Where does this request go?” |
-| `DESIGN.md` | Markdown | `docs/` | Extract shapes, locators, hold reason table | Field-level mapping questions |
-| `DEVELOPER.md` | Markdown | `docs/` | How to add a bank, change policy, config, troubleshooting | When changing code |
-| `SCENARIOS.md` | Markdown | `docs/` | Step-by-step discovery, post, HOLD, amount-cap, and policy checks | Manual test and how to add a hold fixture |
-| `CATALOG.md` | Markdown | `docs/` | This file: inventory of every source file | Find a file by name or role |
+| `PLAN.md` | Markdown | `docs/` | Goals, non-goals, concurrency, schema versioning, **now vs later (status: in repo vs not built)**, risks | Architecture discussion and product path |
+| `PLAN-COMPLIANCE.md` | Markdown | `docs/` | PII/PCI: processing vs copies; Phase 1 redaction and `redact_operator_screen`; encrypt later | Operator copies and `/runs` |
+| `PLAN-DISCOVERY-EVAL.md` | Markdown | `docs/` | Explore evals/judges for discovery (programmatic yes, LLM judge not yet) | Decide before a corpus |
+| `GUIDE.md` | Markdown | `docs/` | Mental model, glossary, how a transfer/hold moves | New developer first hour |
+| `ARCHITECTURE.md` | Markdown | `docs/` | Runtime diagram, layer rules, HTTP, one-worker memory | “Where does this request go?” |
+| `DESIGN.md` | Markdown | `docs/` | Extract shapes, locators, hold reasons, redacted context | Field-level mapping |
+| `DEVELOPER.md` | Markdown | `docs/` | Add a bank, policy, `IAI_*` config, troubleshooting | When changing code |
+| `SCENARIOS.md` | Markdown | `docs/` | Manual discovery, post, HOLD, amount-cap walks | After `make test` |
+| `CATALOG.md` | Markdown | `docs/` | This file: every source file | Find a file by name or role |
 
 ---
 
@@ -81,7 +82,9 @@ Vite’s first HTML is an empty `#app`. Discovery falls back to these published 
 | Name | Type | Folder | Description | Usage |
 | --- | --- | --- | --- | --- |
 | `__init__.py` | Python | `src/interfaces_ai/` | Package version | Import `interfaces_ai` |
-| `config.py` | Python | `src/interfaces_ai/` | `Settings` from `IAI_*` env / `.env` | Thresholds and `BANK_UI_BASE_URL` |
+| `config.py` | Python | `src/interfaces_ai/` | `Settings` from `IAI_*` env / `.env` | Thresholds, `BANK_UI_BASE_URL`, log level |
+| `redact.py` | Python | `src/interfaces_ai/` | Last-4, sample kinds, `redact_operator_screen` | Logs; GET `/runs` console copies |
+| `observability.py` | Python | `src/interfaces_ai/` | `configure_logging`, redacting StreamHandler | `create_app` and `iai` CLI |
 | `cli.py` | Python | `src/interfaces_ai/` | CLI: `institutions`, `canonical`, `discover`, `replay` | `iai …` after install |
 
 ### `src/interfaces_ai/schema/`
@@ -122,7 +125,7 @@ Vite’s first HTML is an empty `#app`. Discovery falls back to these published 
 | `test_discovery.py` | Python (pytest) | `tests/` | Locator extract, coverage score, empty-SPA fallback | Discovery behavior |
 | `test_replay.py` | Python (pytest) | `tests/` | Redwood post; Calloway HOLD block; Northstar large amount | Write vs no-write |
 | `test_escalation.py` | Python (pytest) | `tests/` | Amount + HOLD are distinct reason codes | Hold policy |
-| `test_api.py` | Python (pytest) | `tests/` | Health and institution id list | HTTP smoke |
+| `test_api.py` | Python (pytest) | `tests/` | Health, 404/422, `/runs` redaction after discover + HOLD | HTTP including error and compliance paths |
 | `redwood.html` | HTML fixture | `tests/fixtures/` | Sample marked-up page for discovery unit tests | Injected via `html_loader` |
 
 ---
@@ -181,4 +184,6 @@ Vite’s first HTML is an empty `#app`. Discovery falls back to these published 
 | Add an HTTP route | `src/interfaces_ai/api/routes.py` |
 | Add a test | `tests/test_*.py` |
 | Walk discovery / post / hold by hand | `docs/SCENARIOS.md` |
-| Understand the design | `docs/GUIDE.md`, `docs/PLAN.md`, `docs/PLAN-COMPLIANCE.md` |
+| List every Markdown doc | `README.md` (Docs table) |
+| Understand the design | `docs/GUIDE.md`, `docs/PLAN.md`, `docs/ARCHITECTURE.md`, `docs/DESIGN.md`, `docs/PLAN-COMPLIANCE.md`, `docs/PLAN-DISCOVERY-EVAL.md` |
+| See operator-copy redaction | `docs/PLAN-COMPLIANCE.md`, console **Operator copies**, `GET /api/v1/runs` |

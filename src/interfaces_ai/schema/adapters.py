@@ -1,3 +1,9 @@
+"""Anti-corruption layer: one class per bank.
+
+Replay must not grow `if institution_id == ...` posting trees. Unit conversion
+(string dollars vs integer cents) lives here only.
+"""
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
@@ -17,25 +23,29 @@ from interfaces_ai.schema.canonical import (
     TransferIntent,
 )
 
+# Native product codes → snapshot enum. Keys are bank-specific; values are shared.
 KIND_TO_TYPE = {
-    "demand": AccountType.CHECKING,
-    "SD": AccountType.CHECKING,
-    "CK": AccountType.CHECKING,
-    "parked": AccountType.SAVINGS,
+    "demand": AccountType.CHECKING,  # Redwood
+    "SD": AccountType.CHECKING,  # Northstar share draft
+    "CK": AccountType.CHECKING,  # Calloway
+    "parked": AccountType.SAVINGS,  # Redwood
     "SV": AccountType.SAVINGS,
-    "LN": AccountType.LOAN,
+    "LN": AccountType.LOAN,  # Calloway LOC
 }
 
 
 def as_money(value: float | int | str, currency: str = "USD") -> Money:
+    """Redwood-style decimal strings (and numbers) → Money. str() avoids float binary error."""
     return Money(amount=Decimal(str(value)), currency=currency)
 
 
 def cents_to_money(cents: int, currency: str = "USD") -> Money:
+    """Northstar/Calloway integer cents → Money with two decimal places."""
     return Money(amount=(Decimal(int(cents)) / Decimal(100)).quantize(Decimal("0.01")), currency=currency)
 
 
 def parse_day(value: Any) -> date:
+    """ISO date or compact YYYYMMDD (Northstar `day`)."""
     if isinstance(value, datetime):
         return value.date()
     if isinstance(value, date):
@@ -54,6 +64,8 @@ def _receipt_id() -> str:
 
 
 class NativeAdapter(ABC):
+    """Inbound extract → snapshot; intent → bank body; mutate that bank's working JSON."""
+
     institution_id: str
     institution_name: str
 
@@ -101,6 +113,7 @@ class RedwoodAdapter(NativeAdapter):
                     type=KIND_TO_TYPE.get(kind, AccountType.UNKNOWN),
                     available=as_money(pos["avail"], pos.get("iso", "USD")),
                     current=as_money(pos["ledger"], pos.get("iso", "USD")),
+                    # lifecycle active → open; other values pass through as status strings.
                     status="open" if row.get("lifecycle", "active") == "active" else str(row["lifecycle"]),
                     native_ref={"productInstance": row["productInstance"], "kind": kind},
                 )
@@ -120,6 +133,7 @@ class RedwoodAdapter(NativeAdapter):
                     native_ref={"ref": row["ref"]},
                 )
             )
+        # fromisoformat rejects a trailing Z; normalize to offset form.
         as_of = datetime.fromisoformat(native["extractedAt"].replace("Z", "+00:00"))
         return CanonicalSnapshot(
             institution_id=self.institution_id,
@@ -153,6 +167,7 @@ class RedwoodAdapter(NativeAdapter):
         }
 
     def apply_transfer(self, native, payload, intent, source, dest) -> dict[str, Any]:
+        # Keep avail/ledger as strings so the next to_canonical still sees Redwood's type.
         amount = Decimal(payload["majorUnits"])
         for row in native["products"]["deposits"]:
             pos = row["position"]
@@ -164,6 +179,7 @@ class RedwoodAdapter(NativeAdapter):
                 pos["ledger"] = str(Decimal(pos["ledger"]) + amount)
         today = datetime.now(UTC).date().isoformat()
         rid = _receipt_id()
+        # Prepend so portals show the newest activity first (same as the seed).
         native["posted"][:0] = [
             {
                 "ref": f"{rid}-cr",
@@ -191,10 +207,12 @@ class NorthstarAdapter(NativeAdapter):
 
     def to_canonical(self, native: dict[str, Any]) -> CanonicalSnapshot:
         member = native["memberRec"]
+        # nmLine is "LAST, FIRST M" — snapshot wants FIRST LAST.
         last, _, rest = member["nmLine"].partition(",")
         display = f"{rest.strip()} {last.strip()}".strip()
         accounts = []
         for row in native.get("suffixList", []):
+            # Core code A = active; anything else is treated as hold for replay.
             stat = "open" if row.get("stat") == "A" else "hold"
             accounts.append(
                 Account(
@@ -264,7 +282,7 @@ class NorthstarAdapter(NativeAdapter):
             if str(row["sfx"]) == payload["toSfx"]:
                 row["avail"] += cents
                 row["bal"] += cents
-        today = datetime.now(UTC).date().strftime("%Y%m%d")
+        today = datetime.now(UTC).date().strftime("%Y%m%d")  # actv.day is compact, not ISO
         rid = _receipt_id()
         next_id = max(int(row["id"]) for row in native["actv"]) + 1 if native["actv"] else 1
         native["actv"][:0] = [
@@ -296,6 +314,7 @@ class CallowayAdapter(NativeAdapter):
         cust = native["cust"]
         accounts = []
         for row in native.get("acct_rel", []):
+            # s: OK → open; HOLD (and any other flag) → hold so replay stops before post.
             status = "open" if row.get("s") == "OK" else "hold"
             accounts.append(
                 Account(
@@ -311,6 +330,7 @@ class CallowayAdapter(NativeAdapter):
             )
         txns = []
         for row in native.get("hist", []):
+            # Sign is hist[].s; p is always a positive cent amount.
             direction = TransactionDirection.DEBIT if row.get("s") == "-" else TransactionDirection.CREDIT
             txns.append(
                 Transaction(
@@ -331,7 +351,7 @@ class CallowayAdapter(NativeAdapter):
             as_of=as_of,
             customer=Party(
                 id=str(cust["cif"]),
-                display_name=str(cust["name1"]).title(),
+                display_name=str(cust["name1"]).title(),  # already FIRST LAST; title() for display only
                 email=cust.get("email"),
                 phone=cust.get("voice"),
                 native_id_field="cust.cif",
@@ -375,6 +395,7 @@ class CallowayAdapter(NativeAdapter):
 
 
 def _phone(value: Any) -> str | None:
+    """Northstar ph10 is 10 digits with no punctuation."""
     if value is None:
         return None
     digits = "".join(ch for ch in str(value) if ch.isdigit())

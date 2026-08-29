@@ -1,21 +1,21 @@
 # Developer guide — understanding the project
 
-This guide is for someone who just cloned the repo and needs the mental model before changing code.
+This guide is for someone who just cloned the repo and needs the mental model before changing code. Doc index with one-line descriptions: [README.md](../README.md#docs).
 
 - **File inventory:** [CATALOG.md](CATALOG.md)
 - **Runtime diagram and HTTP:** [ARCHITECTURE.md](ARCHITECTURE.md)
 - **Field-level mapping and hold rules:** [DESIGN.md](DESIGN.md)
 - **Step-by-step test scenarios:** [SCENARIOS.md](SCENARIOS.md)
 - **How to add a bank or change a limit:** [DEVELOPER.md](DEVELOPER.md) (maintenance)
-- **Overall plan:** [PLAN.md](PLAN.md) · **PII / PCI increment:** [PLAN-COMPLIANCE.md](PLAN-COMPLIANCE.md)
+- **Overall plan:** [PLAN.md](PLAN.md) ([now vs later](PLAN.md#now-vs-later-sandbox-vs-product) — in repo vs not built) · **PII / PCI increment:** [PLAN-COMPLIANCE.md](PLAN-COMPLIANCE.md) · **Discovery evals:** [PLAN-DISCOVERY-EVAL.md](PLAN-DISCOVERY-EVAL.md)
 
 ## First hour
 
 1. `make setup && make dev` (or the two-terminal variant in the README).
 2. Open http://127.0.0.1:5173 and click into all three banks. Notice the **labels on screen** still match the JSON (`productInstance`, `sfx`, `acct_rel`), not a cleaned-up “Account ID” everywhere.
 3. Open http://127.0.0.1:8000/api/v1/institutions/redwood/native and then `.../canonical`. Same customer, different shape.
-4. Console → Run discovery, then replay $40 Redwood `CHK-77` → `SAV-12`.
-5. Replay Calloway `900210001` → `900210099`. That is the HOLD path.
+4. Console → Run discovery, then replay $40 Redwood `CHK-77` → `SAV-12`. Check **Operator copies**: discovery samples are kinds (`<id>`, `<money>`), not live values.
+5. Replay Calloway `900210001` → `900210099`. That is the HOLD path. Hold context in **Operator copies** is last-4 ids, not a full intent dump.
 6. Skim `src/interfaces_ai/schema/canonical.py`, then one adapter in `adapters.py`.
 
 If those six steps make sense, you understand the project. The rest of this file names the ideas you just used.

@@ -2,7 +2,7 @@
 
 Python owns mapping and the three modules. TypeScript only renders whatever JSON that bank actually ships.
 
-New to the repo? [GUIDE.md](GUIDE.md). Overall plan? [PLAN.md](PLAN.md). Snapshot/log PII? [PLAN-COMPLIANCE.md](PLAN-COMPLIANCE.md).
+New to the repo? [GUIDE.md](GUIDE.md). Overall plan? [PLAN.md](PLAN.md). Snapshot/log PII? [PLAN-COMPLIANCE.md](PLAN-COMPLIANCE.md). Discovery evals? [PLAN-DISCOVERY-EVAL.md](PLAN-DISCOVERY-EVAL.md). File inventory? [CATALOG.md](CATALOG.md). All docs listed in [README.md](../README.md#docs).
 
 ```text
   /redwood        /northstar       /calloway
@@ -44,7 +44,7 @@ Locally Vite is on 5173 and proxies `/api` to 8000.
 | GET | `/api/v1/escalations` |
 | POST | `/api/v1/dev/reset` |
 
-Run history lives in process memory (`Store`). Extracts also live in process memory after first load.
+Run history lives in process memory (`Store`). Extracts also live in process memory after first load (`_working` in `registry.py`). Sync FastAPI handlers run in a thread pool, so two overlapping replays can lose an update; two Uvicorn workers cannot see each other’s dict. Stay on one worker until durable ledgers exist. See [PLAN.md concurrency](PLAN.md#concurrency) and [schema versioning](PLAN.md#canonical-schema-versioning).
 
 ## Tests
 

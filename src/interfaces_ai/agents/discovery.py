@@ -1,3 +1,9 @@
+"""Walk locators plus the native extract; score coverage. Does not mutate ledgers.
+
+Vite's first HTML is an empty #app, so we fall back to data/contracts/<id>.html.
+NATIVE_HINTS must stay aligned with adapters — it is a second map of the same extract.
+"""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime
@@ -6,11 +12,14 @@ from typing import Any
 from bs4 import BeautifulSoup
 
 from interfaces_ai.config import Settings, get_settings
+from interfaces_ai.observability import get_logger
+from interfaces_ai.redact import sample_kind
 from interfaces_ai.schema.adapters import get_adapter
 from interfaces_ai.schema.canonical import DiscoveryAction, DiscoveryField, DiscoveryReport
 from interfaces_ai.schema.registry import ROOT, get_institution, load_native
 
 CONTRACT_DIR = ROOT / "data" / "contracts"
+log = get_logger("interfaces_ai.discovery")
 
 CANONICAL_REQUIRED = (
     "customer.id",
@@ -23,6 +32,7 @@ CANONICAL_REQUIRED = (
     "transactions[].amount",
 )
 
+# Parallel to adapters: canonical path → native path. A fourth bank needs a block here.
 NATIVE_HINTS: dict[str, dict[str, str]] = {
     "redwood": {
         "customer.id": "household.partyKey",
@@ -72,16 +82,28 @@ class DiscoveryAgent:
     def discover(self, institution_id: str, html: str | None = None) -> DiscoveryReport:
         inst = get_institution(institution_id)
         ui_url = f"{self.settings.bank_ui_base_url.rstrip('/')}{inst.ui_path}"
+        injected = html is not None
         page_html = html if html is not None else self._html_loader(ui_url)
+        html_source = "injected" if injected else ("live" if page_html else "live_empty")
         contract = extract_page_contract(page_html) if page_html else {}
+        # Empty SPA: published contract is the locator source of truth for this sandbox.
         if not contract.get("fields"):
             snapshot_html = _published_contract_html(institution_id)
             if snapshot_html:
                 page_html = snapshot_html
                 contract = extract_page_contract(page_html)
+                html_source = "published_contract"
         native = load_native(institution_id)
         adapter = get_adapter(institution_id)
         snapshot = adapter.to_canonical(native)
+
+        log.info(
+            "discover start institution=%s html_source=%s locator_fields=%s actions=%s",
+            institution_id,
+            html_source,
+            len(contract.get("fields") or []),
+            len(contract.get("actions") or []),
+        )
 
         hints = NATIVE_HINTS[institution_id]
         locators = {item["canonical"]: item.get("locator") for item in contract.get("fields", [])}
@@ -93,14 +115,24 @@ class DiscoveryAgent:
             if native_path is None or sample is None:
                 missing.append(path)
                 continue
+            kind = sample_kind(path)
             fields.append(
                 DiscoveryField(
                     canonical_path=path,
                     native_path=native_path,
                     locator=locators.get(path),
-                    sample=_stringify_sample(sample),
+                    sample=kind,
+                    value_kind=kind.strip("<>"),
                     confidence=1.0 if locators.get(path) else 0.82,
                 )
+            )
+            log.debug(
+                "discover field institution=%s path=%s native_path=%s locator=%s sample=%s",
+                institution_id,
+                path,
+                native_path,
+                "yes" if locators.get(path) else "no",
+                kind,
             )
 
         unmapped = _unmapped_native_paths(institution_id, native)
@@ -114,11 +146,23 @@ class DiscoveryAgent:
             for item in contract.get("actions", [])
         ]
 
+        # Demo 0–1: coverage dominates; locators/submit nudge up; leftover keys nudge down.
         locator_bonus = 0.08 if locators else 0.0
         coverage = len(fields) / max(len(CANONICAL_REQUIRED), 1)
         action_bonus = 0.05 if any(a.canonical_intent == "transfer.submit" for a in actions) else 0.0
         gap_penalty = min(0.15, 0.03 * len(unmapped))
         confidence = round(min(1.0, coverage * 0.9 + locator_bonus + action_bonus - gap_penalty), 3)
+
+        log.info(
+            "discover done institution=%s confidence=%s coverage=%s/%s missing=%s unmapped=%s submit=%s",
+            institution_id,
+            confidence,
+            len(fields),
+            len(CANONICAL_REQUIRED),
+            missing or "none",
+            unmapped or "none",
+            any(a.canonical_intent == "transfer.submit" for a in actions),
+        )
 
         return DiscoveryReport(
             institution_id=institution_id,
@@ -134,6 +178,7 @@ class DiscoveryAgent:
 
 
 def extract_page_contract(html: str) -> dict[str, Any]:
+    """Pull data-iai-* marks into a dict. Used for both live GET and published HTML."""
     soup = BeautifulSoup(html, "html.parser")
     page = soup.find(attrs={"data-iai-page": True})
     fields = []
@@ -178,11 +223,14 @@ def _default_html_loader(url: str) -> str:
         response = httpx.get(url, timeout=3.0)
         response.raise_for_status()
         return response.text
-    except httpx.HTTPError:
+    except httpx.HTTPError as exc:
+        # No response body — it can contain customer names from the portal.
+        log.warning("discover html fetch failed url=%s error=%s", url, type(exc).__name__)
         return ""
 
 
 def _sample_for(snapshot, path: str):
+    """Presence check only. The live value is discarded; DiscoveryField.sample is a kind token."""
     if path.startswith("customer."):
         return getattr(snapshot.customer, path.split(".", 1)[1], None)
     if path.startswith("accounts[].") and snapshot.accounts:
@@ -196,14 +244,8 @@ def _sample_for(snapshot, path: str):
     return None
 
 
-def _stringify_sample(value: Any) -> Any:
-    if hasattr(value, "value"):
-        return value.value
-    return value
-
-
 def _unmapped_native_paths(institution_id: str, native: dict[str, Any]) -> list[str]:
-    """Surface native keys that adapters do not map into the canonical model."""
+    """Hardcoded leftovers (not a full dump walk). routing/header/sys are never copied into the snapshot."""
     extras = {
         "redwood": ["routing"],
         "northstar": ["header"],

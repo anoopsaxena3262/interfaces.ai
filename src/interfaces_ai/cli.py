@@ -1,3 +1,8 @@
+"""CLI entry (`iai`). Same agents as HTTP; a new Store per process, so discover
+then replay in one invocation can share locators, but two separate `iai`
+commands cannot.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -7,12 +12,15 @@ from interfaces_ai.agents.base import Store
 from interfaces_ai.agents.discovery import DiscoveryAgent
 from interfaces_ai.agents.escalation import EscalationAgent
 from interfaces_ai.agents.replay import ReplayEngine
+from interfaces_ai.config import get_settings
+from interfaces_ai.observability import configure_logging
 from interfaces_ai.schema.adapters import get_adapter
 from interfaces_ai.schema.canonical import Money, TransferIntent
 from interfaces_ai.schema.registry import institutions, load_native
 
 
 def main(argv: list[str] | None = None) -> int:
+    configure_logging(get_settings().log_level)
     parser = argparse.ArgumentParser(prog="iai", description="interfaces.ai local sandbox CLI")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
@@ -67,6 +75,7 @@ def main(argv: list[str] | None = None) -> int:
         amount=Money(amount=args.amount),
         memo=args.memo,
     )
+    # latest_discovery is None unless `discover` ran earlier in this same process.
     result = engine.replay(intent, store.latest_discovery(args.institution_id))
     print(result.model_dump_json(indent=2))
     return 0 if result.succeeded else 1

@@ -1,3 +1,5 @@
+"""Re-export snapshot types so `from interfaces_ai.schema import CanonicalSnapshot` works."""
+
 from interfaces_ai.schema.canonical import (
     Account,
     AccountType,

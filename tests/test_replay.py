@@ -1,3 +1,5 @@
+"""Replay: Redwood string balances move; Calloway HOLD and Northstar $9000 do not post."""
+
 from decimal import Decimal
 
 from interfaces_ai.agents.base import Store
@@ -30,6 +32,15 @@ def test_replay_updates_redwood_string_balances() -> None:
     after = get_adapter("redwood").to_canonical(load_native("redwood"))
     after_checking = next(a for a in after.accounts if a.id == checking.id)
     assert after_checking.available.amount == checking.available.amount - Decimal("40.00")
+    blob = result.model_dump_json()
+    assert "majorUnits" not in blob
+    assert "debitInstance" not in blob
+    assert "fromSfx" not in blob
+    assert "native_payload" not in blob
+    submit = next(step for step in result.steps if step.kind.value == "submit")
+    assert submit.payload == {}
+    assert result.native_receipt is not None
+    assert set(result.native_receipt) == {"receipt_id"}
 
 
 def test_replay_stops_on_calloway_hold() -> None:

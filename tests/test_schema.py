@@ -1,3 +1,5 @@
+"""Adapters: same person and $2190.40 checking after unit conversion; Calloway HOLD maps."""
+
 from decimal import Decimal
 
 from interfaces_ai.schema.adapters import get_adapter

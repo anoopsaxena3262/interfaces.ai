@@ -34,5 +34,6 @@
 .theme-console th, .theme-console td { border-bottom-color: #2a3540; }
 .theme-console .sev-critical { color: #ff8d8d; }
 .theme-console .sev-high { color: #ffb020; }
-.theme-console .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.theme-console h3 { font-size: 0.95rem; margin: 0 0 0.5rem; color: #c5d0d8; }
+.theme-console pre { overflow: auto; font-size: 0.8rem; }
 .theme-console label { display: grid; gap: 0.25rem; font-size: 0.85rem; margin-bottom: 0.55rem; color: #c5d0d8; }

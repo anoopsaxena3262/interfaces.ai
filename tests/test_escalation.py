@@ -1,3 +1,5 @@
+"""Holds: amount_threshold and account_status are separate reason codes on one transfer."""
+
 from decimal import Decimal
 
 from interfaces_ai.agents.base import Store
@@ -29,3 +31,10 @@ def test_amount_limit_and_hold_status_are_distinct_codes() -> None:
     assert "account_status" in codes
     case = agent.open(decision)
     assert store.escalations[0].id == case.id
+    ctx = case.context
+    assert "intent" not in ctx
+    assert "memo" not in ctx
+    assert "mail" not in str(ctx).lower()
+    assert "eml" not in str(ctx)
+    assert "900210001" not in str(ctx)
+    assert ctx["from_account_id"] == "••••0001"

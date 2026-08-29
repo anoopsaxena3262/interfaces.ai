@@ -1,3 +1,5 @@
+"""Isolate in-memory ledgers so one test's replay cannot leak into the next."""
+
 from __future__ import annotations
 
 import pytest

@@ -61,7 +61,7 @@ Stop with Ctrl-C. Ledger writes are in memory; **Reset ledgers** on the console,
 
 ## How to test
 
-Automated tests (schema mapping, discovery, replay, holds, API smoke):
+Automated tests (schema mapping, discovery, replay, holds, API 404/422, operator-copy redaction):
 
 ```bash
 make test
@@ -94,20 +94,31 @@ iai replay redwood CHK-77 SAV-12 40 --memo "cli"
 ## Layout
 
 ```
-banks-ui/          TypeScript portals + console
+banks-ui/          TypeScript portals + console (operator copies are redacted)
 data/native/       Seed extracts (do not edit from the UI)
 data/contracts/    Locator HTML used when the SPA has not rendered
 src/interfaces_ai/ Snapshot models, adapters, discovery, replay, holds, API
-docs/              How it is put together
+docs/              Design, runtime, scenarios, and increment plans
 ```
 
-- [File catalog](docs/CATALOG.md) — every source file, type, folder, what it is for
-- [Test scenarios](docs/SCENARIOS.md) — step-by-step discovery, post, and hold checks
-- [Design plan](docs/PLAN.md)
-- [Compliance increment](docs/PLAN-COMPLIANCE.md) — PII in snapshot/logs; PCI guard; encryption stance
-- [Architecture](docs/ARCHITECTURE.md)
-- [Design notes](docs/DESIGN.md)
-- [Maintaining this](docs/DEVELOPER.md)
+## Docs
+
+Every Markdown file in the repo:
+
+| File | Description |
+| --- | --- |
+| [README.md](README.md) | Clone, `make setup` / `make dev` / `make test`, bank URLs, CLI, and this index. |
+| [docs/GUIDE.md](docs/GUIDE.md) | First-hour mental model: native vs snapshot, adapters, discovery/replay/holds, glossary. |
+| [docs/CATALOG.md](docs/CATALOG.md) | Inventory of every source file (path, type, when to touch it). |
+| [docs/PLAN.md](docs/PLAN.md) | Why the sandbox exists: goals, non-goals, concurrency, schema versioning, now vs later (what is **in the repo** vs sandbox-next vs product), risks. |
+| [docs/PLAN-COMPLIANCE.md](docs/PLAN-COMPLIANCE.md) | PII/PCI: what processing needs vs copies; Phase 1 redaction (kinds, empty SUBMIT, `redact_operator_screen`); encryption later. |
+| [docs/PLAN-DISCOVERY-EVAL.md](docs/PLAN-DISCOVERY-EVAL.md) | Exploration only: programmatic evals/judges for discovery vs LLM-as-judge (not for the current agent). |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Runtime diagram, layer rules, HTTP routes, one-worker `_working` / `Store`. |
+| [docs/DESIGN.md](docs/DESIGN.md) | Per-bank extract quirks, `data-iai-*` locators, hold reason table, redacted hold context. |
+| [docs/DEVELOPER.md](docs/DEVELOPER.md) | Add a bank, change policy/config (`IAI_*`), troubleshooting (including two-worker split-brain). |
+| [docs/SCENARIOS.md](docs/SCENARIOS.md) | Manual walks: discovery, Redwood $40 post, Calloway HOLD, Northstar $9000, CLI equivalents. |
+
+Start with the README, then [GUIDE.md](docs/GUIDE.md) if you are new. Use [CATALOG.md](docs/CATALOG.md) to find a file.
 
 ## License
 

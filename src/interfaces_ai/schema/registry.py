@@ -1,3 +1,9 @@
+"""Institution catalog and in-memory working ledgers.
+
+Git seeds live in data/native/*.json. First load copies into `_working`. Replay
+mutates that copy; reset_native() drops it so the next load re-reads the seed.
+"""
+
 from __future__ import annotations
 
 import copy
@@ -8,9 +14,10 @@ from typing import Any
 
 from interfaces_ai.schema.adapters import ADAPTERS, NativeAdapter
 
+# registry.py is src/interfaces_ai/schema/ → parents[3] is the repo root.
 ROOT = Path(__file__).resolve().parents[3]
 DATA_DIR = ROOT / "data" / "native"
-_working: dict[str, dict[str, Any]] = {}
+_working: dict[str, dict[str, Any]] = {}  # one process; overlapping load/save races — PLAN.md concurrency
 
 
 @dataclass(frozen=True)
@@ -25,6 +32,7 @@ class Institution:
 
 
 def institutions() -> list[Institution]:
+    """Catalog for the API/CLI. A fourth bank needs a row here and an ADAPTERS entry."""
     return [
         Institution(
             id="redwood",
@@ -64,6 +72,7 @@ def get_institution(institution_id: str) -> Institution:
 
 
 def load_native(institution_id: str) -> dict[str, Any]:
+    """Return a deep copy of the working extract so callers cannot mutate `_working` by accident."""
     if institution_id not in _working:
         inst = get_institution(institution_id)
         _working[institution_id] = json.loads(inst.native_file.read_text())
@@ -71,11 +80,13 @@ def load_native(institution_id: str) -> dict[str, Any]:
 
 
 def save_native(institution_id: str, payload: dict[str, Any]) -> None:
+    """Persist a working copy after apply_transfer. Does not write git seeds."""
     get_institution(institution_id)
     _working[institution_id] = copy.deepcopy(payload)
 
 
 def reset_native(institution_id: str | None = None) -> None:
+    """Drop working copies so the next load_native re-reads data/native. Used by tests and /dev/reset."""
     if institution_id is None:
         _working.clear()
         return

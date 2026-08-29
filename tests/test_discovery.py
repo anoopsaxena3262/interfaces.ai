@@ -1,3 +1,5 @@
+"""Discovery: locators, coverage score, empty-SPA fallback to published contract HTML."""
+
 from pathlib import Path
 
 from interfaces_ai.agents.base import Store
@@ -43,3 +45,12 @@ def test_discovery_does_not_escalate_when_confident() -> None:
     escalation = EscalationAgent(store)
     report = agent.discover("northstar")
     assert escalation.maybe_open_for_discovery(report) is None
+
+
+def test_discovery_samples_are_kinds_not_live_values() -> None:
+    report = DiscoveryAgent(html_loader=lambda _url: FIXTURE.read_text()).discover("redwood")
+    blob = report.model_dump_json()
+    assert "@" not in blob
+    assert "2190.40" not in blob
+    assert "HH-20441" not in blob
+    assert {field.sample for field in report.fields} <= {"<id>", "<money>", "<string>", "<enum>"}

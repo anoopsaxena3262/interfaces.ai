@@ -1,3 +1,9 @@
+"""Shared snapshot and agent DTOs. Keep aligned with data/schemas/canonical.schema.json.
+
+Agents (discovery, replay, hold) speak these types only. Bank JSON never appears
+on CanonicalSnapshot except as opaque native_ref / native_path strings.
+"""
+
 from __future__ import annotations
 
 from datetime import date, datetime
@@ -11,7 +17,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class AccountType(StrEnum):
     CHECKING = "checking"
     SAVINGS = "savings"
-    CREDIT = "credit"
+    CREDIT = "credit"  # schema allows it; fixtures have no PAN — reject card data at ingest if it appears
     LOAN = "loan"
     UNKNOWN = "unknown"
 
@@ -22,7 +28,7 @@ class TransactionDirection(StrEnum):
 
 
 class Money(BaseModel):
-    """ISO-style amount: decimal string plus ISO-4217 currency."""
+    """ISO-style amount: Decimal plus ISO-4217 currency. Never float on the wire."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -30,25 +36,26 @@ class Money(BaseModel):
     currency: str = "USD"
 
     def as_float(self) -> float:
+        """Policy comparisons only (escalation thresholds). Do not persist this."""
         return float(self.amount)
 
 
 class Party(BaseModel):
     id: str
     display_name: str
-    email: str | None = None
+    email: str | None = None  # mapped for portals; unused by replay/policy
     phone: str | None = None
     native_id_field: str = Field(description="Source field path that produced Party.id")
 
 
 class Account(BaseModel):
-    id: str
+    id: str  # native posting key (Calloway n= looks like a full DDA)
     masked_number: str
     name: str
     type: AccountType
     available: Money
     current: Money
-    status: str = "open"
+    status: str = "open"  # free string today; "hold" blocks replay
     native_ref: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -57,13 +64,16 @@ class Transaction(BaseModel):
     account_id: str
     posted_on: date
     description: str
-    amount: Money
+    amount: Money  # always positive; sign lives on direction
     direction: TransactionDirection
     native_ref: dict[str, Any] = Field(default_factory=dict)
 
 
 class CanonicalSnapshot(BaseModel):
-    """Bank-agnostic customer/account/activity view used by all agents."""
+    """Bank-agnostic customer/account/activity view used by all agents.
+
+    Implied schema 1.0.0 — no schema_version field yet. Versioning mechanism: PLAN.md.
+    """
 
     institution_id: str
     institution_name: str
@@ -95,7 +105,7 @@ class ReplayStep(BaseModel):
     kind: ReplayStepKind
     description: str
     locator: str | None = None
-    payload: dict[str, Any] = Field(default_factory=dict)
+    payload: dict[str, Any] = Field(default_factory=dict)  # locators/masked ids/amount only — never native bodies
     ok: bool = True
     detail: str = ""
 
@@ -104,7 +114,8 @@ class DiscoveryField(BaseModel):
     canonical_path: str
     native_path: str
     locator: str | None = None
-    sample: Any = None
+    sample: Any = None  # kind token only (`<id>`, `<money>`), never a live extract value
+    value_kind: str = "string"
     confidence: float = 1.0
 
 
@@ -123,7 +134,7 @@ class DiscoveryReport(BaseModel):
     actions: list[DiscoveryAction]
     unmapped_native_paths: list[str] = Field(default_factory=list)
     missing_canonical_paths: list[str] = Field(default_factory=list)
-    confidence: float
+    confidence: float  # demo 0–1; hold on this vs IAI_DISCOVERY_MIN_CONFIDENCE
     page_contract: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -135,13 +146,15 @@ class EscalationSeverity(StrEnum):
 
 
 class EscalationReason(StrEnum):
+    """Stable codes for the hold queue. Add a member instead of stuffing text into summary."""
+
     LOW_DISCOVERY_CONFIDENCE = "low_discovery_confidence"
     UNMAPPED_FIELDS = "unmapped_fields"
     REPLAY_STEP_FAILED = "replay_step_failed"
     AMOUNT_THRESHOLD = "amount_threshold"
     ACCOUNT_STATUS = "account_status"
     UNRESOLVED_ACCOUNT = "unresolved_account"
-    POLICY = "policy"
+    POLICY = "policy"  # same-account *or* insufficient funds — split if you need to filter
 
 
 class EscalationCase(BaseModel):

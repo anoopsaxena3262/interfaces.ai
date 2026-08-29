@@ -1,6 +1,6 @@
 # Design notes
 
-Field-level choices (extract shapes, locators, hold table). For the overall plan see [PLAN.md](PLAN.md). For concepts see [GUIDE.md](GUIDE.md). For step-by-step hold and post checks see [SCENARIOS.md](SCENARIOS.md).
+Field-level choices (extract shapes, locators, hold table). Overall plan: [PLAN.md](PLAN.md). Mental model: [GUIDE.md](GUIDE.md). Holds by hand: [SCENARIOS.md](SCENARIOS.md). Operator-copy redaction: [PLAN-COMPLIANCE.md](PLAN-COMPLIANCE.md). Doc index: [README.md](../README.md#docs).
 
 ## Why three extracts
 
@@ -38,6 +38,8 @@ A transfer intent names canonical account ids. The adapter builds the bank body 
 | Either account is not `open` (Calloway HOLD maps to `hold`) | `account_status` |
 | Same account or amount above available | `policy` |
 | A replay step failed | `replay_step_failed` |
+
+Hold `context` is redacted: last-4 account ids, amount, statuses, reason paths. It does not dump `TransferIntent` (memo, email) or native transfer bodies. See [PLAN-COMPLIANCE.md](PLAN-COMPLIANCE.md) Phase 1.
 
 ## Out of scope for this sandbox
 

@@ -1,3 +1,9 @@
+"""HTTP surface. Portals read native JSON; console and CLI also hit canonical/discover/replay.
+
+There is no second “mutate JSON” route: transfers always go through ReplayEngine
+so policy runs first.
+"""
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -5,6 +11,7 @@ from decimal import Decimal
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from interfaces_ai.redact import redact_discovery_report, redact_escalation_case, redact_operator_screen
 from interfaces_ai.schema.adapters import get_adapter
 from interfaces_ai.schema.canonical import Money, TransferIntent
 from interfaces_ai.schema.registry import institutions, load_native, reset_native
@@ -20,7 +27,7 @@ class TransferRequest(BaseModel):
 
 
 class DiscoverRequest(BaseModel):
-    institution_id: str | None = None
+    institution_id: str | None = None  # omit to discover every bank
 
 
 def build_router() -> APIRouter:
@@ -45,6 +52,7 @@ def build_router() -> APIRouter:
 
     @router.get("/api/v1/institutions/{institution_id}/native")
     def native_payload(institution_id: str) -> dict:
+        """Working extract (bank-shaped). Portals must render these keys, not the snapshot."""
         try:
             return load_native(institution_id)
         except KeyError as exc:
@@ -74,9 +82,9 @@ def build_router() -> APIRouter:
                 raise HTTPException(404, str(exc)) from exc
             store.add_discovery(report)
             case = escalation.maybe_open_for_discovery(report)
-            reports.append(report.model_dump(mode="json"))
+            reports.append(redact_discovery_report(report.model_dump(mode="json")))
             if case:
-                cases.append(case.model_dump(mode="json"))
+                cases.append(redact_escalation_case(case.model_dump(mode="json")))
         return {"reports": reports, "escalations": cases}
 
     @router.post("/api/v1/agents/replay")
@@ -100,18 +108,26 @@ def build_router() -> APIRouter:
     @router.get("/api/v1/runs")
     def runs(request: Request) -> dict:
         store = request.app.state.store
+        screen = redact_operator_screen(
+            discoveries=[item.model_dump(mode="json") for item in store.discoveries[:50]],
+            escalations=[item.model_dump(mode="json") for item in store.escalations[:50]],
+        )
         return {
-            "discoveries": [item.model_dump(mode="json") for item in store.discoveries[:50]],
+            "discoveries": screen["discoveries"],
             "replays": [item.model_dump(mode="json") for item in store.replays[:50]],
-            "escalations": [item.model_dump(mode="json") for item in store.escalations[:50]],
+            "escalations": screen["escalations"],
         }
 
     @router.get("/api/v1/escalations")
     def escalations(request: Request) -> list[dict]:
-        return [item.model_dump(mode="json") for item in request.app.state.store.escalations]
+        return [
+            redact_escalation_case(item.model_dump(mode="json"))
+            for item in request.app.state.store.escalations
+        ]
 
     @router.post("/api/v1/dev/reset")
     def reset_demo_ledgers() -> dict:
+        """Reload seeds into memory. Does not wipe Store (discovery/replay/hold history)."""
         reset_native()
         return {"ok": True, "message": "In-memory ledgers restored from data/native JSON seeds."}
 
